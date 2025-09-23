@@ -6,7 +6,7 @@ class AdsFeedScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Center(
-      child: Text("🛒 Ads Feed Screen", style: TextStyle(fontSize: 24)),
+      child: Text("🛒 Ads Feed Screen...", style: TextStyle(fontSize: 24)),
     );
   }
 }

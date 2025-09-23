@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "762008277366",
+    "project_id": "kmgapp-fd7b1",
+    "storage_bucket": "kmgapp-fd7b1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:762008277366:android:044fafccc10cafdc37aa57",
+        "android_client_info": {
+          "package_name": "com.example.kmg"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDb8-MnxidLlZMfn8aKT7gcW3lfbGYH6ds"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

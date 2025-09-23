@@ -1,0 +1,224 @@
+this is the structure >> lib/
+│
+├── main.dart   done           # App entry point
+│
+├── theme/                 # Colors, typography, dark/light theme
+│   └── app_theme.dart
+│
+├── constants/             # App constants
+│   └── app_strings.dart
+│   └── app_icons.dart
+│
+├── services/              # Firebase / API services
+│   └── auth_service.dart
+│   └── ads_service.dart
+│   └── user_service.dart
+│   └── notification_service.dart
+│
+├── models/                # Data models
+│   └── user_model.dart
+│   └── ad_model.dart
+│
+├── providers/             # State management (Provider/ Riverpod / Bloc)
+│   └── auth_provider.dart
+│   └── ads_provider.dart
+│   └── theme_provider.dart
+│
+├── screens/               # All UI Screens
+│   ├── landing/
+│   │   └── landing_screen.dart done
+│   ├── know_more/
+│   │   └── know_more_screen.dart done
+│   ├── dashboard/ 
+│   │   └── dashboard_screen.dart done
+│   ├── ads/
+│   │   ├── ads_feed_screen.dart 
+│   │   ├── ad_detail_screen.dart 
+│   │   └── add_submit_screen.dart done
+│   ├── saved/
+│   │   └── saved_screen.dart
+│   ├── settings/
+│   │   ├── settings_screen.dart
+│   │   ├── profile_screen.dart
+│   │   ├── sign_in_screen.dart
+│   │   ├── sign_up_screen.dart
+│   │   └── guest_screen.dart
+│
+├── widgets/               # Reusable UI widgets
+│   ├── ad_card.dart
+│   ├── search_bar.dart done
+│   ├── category_chips.dart
+│   ├── custom_button.dart
+│   └── input_field.dart
+│
+└── utils/                 # Helper functions
+    ├── validators.dart
+    ├── formatters.dart
+    └── navigation.dart
+
+
+
+----------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------
+
+
+ lib/
+│
+├── main.dart                                # App entry point
+│
+├── theme/
+│   └── app_theme.dart
+│
+├── constants/
+│   ├── app_strings.dart
+│   ├── app_icons.dart
+│   └── app_colors.dart
+│
+├── services/                                # Handles Firebase/API logic
+│   ├── auth_service.dart                    # Sign up, sign in, delete, etc.
+│   ├── ads_service.dart                     # Upload/edit/delete ads
+│   ├── matrimony_service.dart               # Matrimony-specific operations
+│   ├── user_service.dart                    # Fetch/edit user profiles
+│   ├── admin_service.dart                   # Admin-specific operations
+│   └── notification_service.dart            # Push notifications / FCM
+│
+├── models/                                  # Data models
+│   ├── user_model.dart
+│   ├── ad_model.dart
+│   ├── matrimony_model.dart
+│   └── admin_model.dart                     # Optional: roles, permissions
+│
+├── providers/
+│   ├── auth_provider.dart
+│   ├── ads_provider.dart
+│   ├── matrimony_provider.dart
+│   ├── theme_provider.dart
+│   ├── user_provider.dart                   # For user profile changes
+│   └── admin_provider.dart                  # For admin operations
+│
+├── screens/
+│   ├── landing/
+│   │   └── landing_screen.dart
+│   ├── know_more/
+│   │   └── know_more_screen.dart
+│   ├── dashboard/
+│   │   └── dashboard_screen.dart
+│   │
+│   ├── ads/                                 # Marketplace module
+│   │   ├── ads_feed_screen.dart             # List of ads
+│   │   ├── ad_detail_screen.dart            # Single ad details
+│   │   └── ad_submit_screen.dart            # Create new ad
+│   │
+│   ├── matrimony/                           # Matrimony module
+│   │   ├── matrimony_feed_screen.dart       # Browse matrimony profiles
+│   │   ├── matrimony_detail_screen.dart     # Profile detail
+│   │   └── matrimony_submit_screen.dart     # Submit profile for review
+│   │
+│   ├── saved/
+│   │   └── saved_screen.dart                # Saved ads/profiles
+│   │
+│   ├── settings/
+│   │   ├── settings_screen.dart
+│   │   ├── profile_screen.dart              # User profile view/edit
+│   │   ├── sign_in_screen.dart
+│   │   ├── sign_up_screen.dart
+│   │   └── guest_screen.dart
+│   │
+│   └── admin/                               # Admin-only UI
+│       ├── admin_dashboard_screen.dart
+│       ├── manage_users_screen.dart
+│       ├── manage_ads_screen.dart
+│       ├── manage_matrimony_screen.dart     # Review matrimony profiles
+│       └── edit_entry_screen.dart           # Edit ad/profile
+│
+├── widgets/
+│   ├── ad_card.dart
+│   ├── matrimony_card.dart
+│   ├── search_bar.dart
+│   ├── category_chips.dart
+│   ├── custom_button.dart
+│   ├── input_field.dart
+│   └── user_tile.dart                       # For admin view of users
+│
+└── utils/
+    ├── validators.dart
+    ├── formatters.dart
+    └── navigation.dart
+
+----------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------
+
+
+firestore-root/
+│
+├── users/
+│   └── {userId}/
+│       ├── name: string
+│       ├── phone: string
+│       ├── email: string
+│       ├── place: string
+│       ├── whatsappNumber: string
+│       ├── profilePhoto: string (Storage URL)
+│       ├── createdAt: timestamp
+│       └── updatedAt: timestamp
+│
+├── submissions/                             # All pending entries (ads + matrimony)
+│   └── {submissionId}/
+│       ├── userId: string (ref users/{userId})
+│       ├── type: string ("marketplace" | "matrimony")
+│       ├── data: map (all submitted fields)
+│       ├── paymentStatus: string ("pending" | "paid" | "failed")
+│       ├── processed: bool (false = not reviewed)
+│       └── submittedAt: timestamp
+│
+├── advertisements/
+│   ├── listings/                            # Approved Ads
+│   │   └── {listingId}/
+│   │       ├── userId: string
+│   │       ├── itemName: string
+│   │       ├── price: number
+│   │       ├── place: string
+│   │       ├── whatsappNumber: string
+│   │       ├── categoryId: string
+│   │       ├── images: array<string> (URLs → Storage)
+│   │       ├── postedAt: timestamp
+│   │       └── status: string ("active" | "expired" | "removed")
+│   │
+│   └── categories/
+│       └── {categoryId}/
+│           ├── name: string
+│           ├── description: string
+│           └── createdAt: timestamp
+│
+├── matrimony/
+│   ├── listings/                            # Approved Matrimony Profiles
+│   │   └── {profileId}/
+│   │       ├── userId: string
+│   │       ├── name: string
+│   │       ├── gender: string
+│   │       ├── dob: timestamp
+│   │       ├── age: number
+│   │       ├── place: string
+│   │       ├── maritalStatus: string
+│   │       ├── religion: string
+│   │       ├── caste: string
+│   │       ├── education: string
+│   │       ├── occupation: string
+│   │       ├── income: number
+│   │       ├── bio: string
+│   │       ├── profilePhoto: string (Storage URL)
+│   │       ├── expectations: string
+│   │       ├── postedAt: timestamp
+│   │       └── status: string ("active" | "hidden" | "expired")
+│   │
+│   └── categories/
+│       └── {categoryId}/
+│           ├── name: string (e.g., "Hindu", "Christian", "Muslim")
+│           ├── description: string
+│           └── createdAt: timestamp
+│
+└── admin/
+    └── roles/
+        └── {adminId}/
+            ├── role: string ("superadmin" | "editor")
+            └── permissions: array<string>

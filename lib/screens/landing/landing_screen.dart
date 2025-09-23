@@ -14,10 +14,10 @@ class LandingPage extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.shopping_bag, size: 100, color: Colors.blueAccent),
-                const SizedBox(height: 20),
+                Icon(Icons.circle, size: 100, color: Colors.blueAccent),
+                const SizedBox(height: 10),
                 const Text(
-                  "The Biggest",
+                  "KMG",
                   style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
