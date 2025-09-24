@@ -229,7 +229,7 @@ firestore-root/
 
 screens/admin/
    ├── admin_dashboard_screen.dart
-   ├── manage_ads_screen.dart
+   ├── manage_Classifieds_screen.dart   Manage Classifieds
    ├── manage_matrimony_screen.dart
    ├── manage_users_screen.dart
    ├── messages_screen.dart

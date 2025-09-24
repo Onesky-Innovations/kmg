@@ -5,6 +5,7 @@ import 'package:kmg/screens/settings/EditProfileScreen.dart';
 import 'settings_screen.dart';
 import 'sign_in_screen.dart';
 import 'sign_up_screen.dart';
+import '../admin/admin_dashboard_screen.dart'; // Make sure this import exists
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -62,6 +63,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         isAdmin = result['isAdmin'] ?? false;
       });
+
+      // ✅ Auto-redirect if admin
+      if (isAdmin) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+        );
+      }
     }
   }
 
@@ -70,6 +79,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context,
       MaterialPageRoute(builder: (_) => const SignUpScreen()),
     );
+
     if (result == true) await _fetchUser();
   }
 
@@ -101,6 +111,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     return Scaffold(
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
           ListView(
@@ -146,14 +157,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               const SizedBox(height: 24),
+
+              // ✅ Admin Panel ListTile
               if (isLoggedIn && isAdmin)
                 ListTile(
                   leading: const Icon(Icons.admin_panel_settings),
                   title: const Text("Admin Panel"),
                   onTap: () {
-                    // TODO: navigate to admin panel
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Admin Panel tapped")),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const AdminDashboardScreen(),
+                      ),
                     );
                   },
                 ),
@@ -202,24 +217,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   onTap: _logout,
                 ),
-              // if (isLoggedIn && isAdmin)
-              //   ListTile(
-              //     leading: const Icon(Icons.admin_panel_settings),
-              //     title: const Text("Admin Panel"),
-              //     onTap: () {
-              //       // TODO: navigate to admin panel
-              //       ScaffoldMessenger.of(context).showSnackBar(
-              //         const SnackBar(content: Text("Admin Panel tapped")),
-              //       );
-              //     },
-              //   ),
             ],
           ),
+
           // Edit profile button on top right
           if (isLoggedIn)
             Positioned(
-              right: 2, // Adjust horizontal position
-              top: 20, // Align vertically with top of avatar
+              right: 2,
+              top: 20,
               child: PopupMenuButton(
                 icon: const Icon(Icons.more_vert, size: 24),
                 itemBuilder: (_) => [
