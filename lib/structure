@@ -222,3 +222,123 @@ firestore-root/
         └── {adminId}/
             ├── role: string ("superadmin" | "editor")
             └── permissions: array<string>
+
+
+//---------------------------------------------------------------
+//---------------------------------------------------------------
+
+screens/admin/
+   ├── admin_dashboard_screen.dart
+   ├── manage_ads_screen.dart
+   ├── manage_matrimony_screen.dart
+   ├── manage_users_screen.dart
+   ├── messages_screen.dart
+   ├── notifications_screen.dart
+   ├── content_pages_screen.dart   # Edit FAQ/Terms/Privacy
+   └── settings_screen.dart
+📱 Admin Dashboard – Screen Structure
+1. AdminDashboardScreen
+
+AppBar: Title = "Admin Dashboard"
+
+Drawer / Side Menu:
+
+Dashboard (default home)
+
+Manage Classifieds
+
+Manage Matrimony
+
+Manage Users
+
+Messages/Support
+
+Notifications
+
+FAQ / Terms / Privacy
+
+Settings
+
+Body (Home):
+
+Stats Row (cards):
+
+Total Classifieds
+
+Total Matrimony Profiles
+
+Total Users
+
+Pending Messages
+
+Quick Actions Grid:
+
+Manage Classifieds
+
+Manage Matrimony
+
+Users
+
+Send Notification
+
+Messages
+
+FAQ / Terms / Privacy
+
+Settings
+
+2. ManageClassifiedsScreen
+
+AppBar: “Manage Classifieds”
+
+Body:
+
+Search bar
+
+ListView of ads (title, user, status)
+
+FloatingActionButton: “Add Classified”
+
+3. ManageMatrimonyScreen
+
+Same layout as classifieds, but for matrimony profiles.
+
+4. ManageUsersScreen
+
+List of users (name, email, status)
+
+Options: Ban / Unban / Delete
+
+5. MessagesScreen
+
+List of support messages from users
+
+Each tile → open detail → reply/mark resolved
+
+6. NotificationsScreen
+
+Form: Title + Message
+
+Button: “Send Notification” (via FCM)
+
+History of sent notifications
+
+7. ContentPagesScreen
+
+List of editable static pages:
+
+FAQ
+
+Terms & Conditions
+
+Privacy Policy
+
+Tap → open editor screen
+
+8. SettingsScreen
+
+Dark/Light mode toggle
+
+Change admin password
+
+Logout

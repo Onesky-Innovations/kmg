@@ -157,13 +157,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     );
                   },
                 ),
-              // if (isLoggedIn)
-              //   SwitchListTile(
-              //     title: const Text("Push Notifications"),
-              //     value: notificationsEnabled,
-              //     onChanged: (val) =>
-              //         setState(() => notificationsEnabled = val),
-              //   ),
+
               const Divider(),
               ListTile(
                 leading: const Icon(Icons.help_outline),
