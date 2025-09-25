@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:kmg/screens/admin/add_classified_fab.dart'; // <-- your new add classified screen
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:kmg/screens/admin/AddBannerFAB.dart';
+import 'Add_Classified_FAB.dart';
+// import 'Add_Banner_FAB.dart'; // ✅ Import your banner FAB
+import '../ads/ad_detail_screen.dart';
 
 class ManageClassifiedsScreen extends StatefulWidget {
   const ManageClassifiedsScreen({super.key});
@@ -12,15 +17,37 @@ class ManageClassifiedsScreen extends StatefulWidget {
 class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
     with SingleTickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Tabs
   final List<String> _tabs = ["Active", "Expired", "Featured", "Banners"];
   late TabController _tabController;
+
+  bool isLoading = true;
+  bool isAdmin = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabs.length, vsync: this);
+    _fetchAdminStatus();
+  }
+
+  Future<void> _fetchAdminStatus() async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      final doc = await _firestore.collection("users").doc(user.uid).get();
+      if (doc.exists) {
+        setState(() {
+          isAdmin = doc.data()?['admin'] == true;
+          isLoading = false;
+        });
+      } else {
+        setState(() => isLoading = false);
+      }
+    } else {
+      setState(() => isLoading = false);
+    }
   }
 
   @override
@@ -30,20 +57,12 @@ class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
     super.dispose();
   }
 
-  // Sample Ad model
-  List<Map<String, dynamic>> ads = List.generate(10, (index) {
-    return {
-      "title": "Bike for Sale $index",
-      "user": "User $index",
-      "status": index % 2 == 0 ? "Active" : "Expired",
-      "isFeatured": index % 3 == 0,
-      "type": index % 4 == 0 ? "Banner" : "Normal",
-      "expiryDate": "2025-10-${index + 1}"
-    };
-  });
-
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     return DefaultTabController(
       length: _tabs.length,
       child: Scaffold(
@@ -56,63 +75,172 @@ class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
         ),
         body: Column(
           children: [
-            // 🔍 Search bar
             Padding(
               padding: const EdgeInsets.all(8.0),
               child: TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
-                  hintText: "Search ads...",
+                  hintText: "Search ads.........",
                   prefixIcon: const Icon(Icons.search),
                   border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
+                onChanged: (_) => setState(() {}),
               ),
             ),
-            // 📋 Tab views
             Expanded(
               child: TabBarView(
                 controller: _tabController,
                 children: _tabs.map((tab) {
-                  List<Map<String, dynamic>> filteredAds = ads.where((ad) {
-                    if (tab == "Active") return ad['status'] == "Active";
-                    if (tab == "Expired") return ad['status'] == "Expired";
-                    if (tab == "Featured") return ad['isFeatured'] == true;
-                    if (tab == "Banners") return ad['type'] == "Banner";
-                    return true;
-                  }).toList();
+                  return StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection("classifieds")
+                        .orderBy("createdAt", descending: true)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                        return const Center(
+                          child: Text("No classifieds found"),
+                        );
+                      }
 
-                  return ListView.builder(
-                    itemCount: filteredAds.length,
-                    itemBuilder: (ctx, index) {
-                      final ad = filteredAds[index];
-                      return Card(
-                        margin: const EdgeInsets.symmetric(
-                            vertical: 6, horizontal: 12),
-                        child: ListTile(
-                          title: Text(ad['title']),
-                          subtitle: Text(
-                              "User: ${ad['user']}\nExpiry: ${ad['expiryDate']}"),
-                          trailing: PopupMenuButton<String>(
-                            onSelected: (value) {
-                              if (value == "edit") {
-                                // TODO: navigate to edit ad
-                              } else if (value == "extend") {
-                                _showExtendDialog(ad);
-                              } else if (value == "delete") {
-                                // TODO: delete ad
-                              }
-                            },
-                            itemBuilder: (ctx) => [
-                              const PopupMenuItem(
-                                  value: "edit", child: Text("Edit")),
-                              const PopupMenuItem(
-                                  value: "extend", child: Text("Extend")),
-                              const PopupMenuItem(
-                                  value: "delete", child: Text("Delete")),
-                            ],
-                          ),
-                        ),
+                      final docs = snapshot.data!.docs;
+                      final now = DateTime.now();
+
+                      final filteredAds = docs.where((doc) {
+                        final data = doc.data() as Map<String, dynamic>;
+                        final expiryDate = data["expiryDate"] != null
+                            ? (data["expiryDate"] as Timestamp).toDate()
+                            : null;
+
+                        // Search filter
+                        if (_searchController.text.isNotEmpty &&
+                            !data["title"].toString().toLowerCase().contains(
+                              _searchController.text.toLowerCase(),
+                            )) {
+                          return false;
+                        }
+
+                        // Tab filters
+                        if (tab == "Active") {
+                          return data["status"] == "Active" &&
+                              expiryDate != null &&
+                              expiryDate.isAfter(now);
+                        }
+                        if (tab == "Expired") {
+                          return data["status"] == "Expired" ||
+                              (expiryDate != null && expiryDate.isBefore(now));
+                        }
+                        if (tab == "Featured") {
+                          return data["isFeatured"] == true;
+                        }
+                        if (tab == "Banners") return data["type"] == "Banner";
+
+                        return true;
+                      }).toList();
+
+                      if (filteredAds.isEmpty) {
+                        return const Center(
+                          child: Text("No ads match criteria"),
+                        );
+                      }
+
+                      return ListView.builder(
+                        itemCount: filteredAds.length,
+                        itemBuilder: (ctx, index) {
+                          final ad =
+                              filteredAds[index].data() as Map<String, dynamic>;
+                          final adId = filteredAds[index].id;
+
+                          return Card(
+                            margin: const EdgeInsets.symmetric(
+                              vertical: 6,
+                              horizontal: 12,
+                            ),
+                            child: ListTile(
+                              leading:
+                                  ad["images"] != null &&
+                                      ad["images"].isNotEmpty
+                                  ? Image.network(
+                                      ad["images"][0],
+                                      width: 60,
+                                      fit: BoxFit.cover,
+                                    )
+                                  : const Icon(Icons.image, size: 40),
+                              title: Text(ad['title'] ?? "No title"),
+                              subtitle: Text(
+                                "User: ${ad['userId']}\nExpiry: ${ad['expiryDate']?.toDate()?.toString().split(" ").first ?? "N/A"}",
+                              ),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => AdDetailScreen(
+                                      adDoc: filteredAds[index],
+                                      isAdmin: isAdmin,
+                                    ),
+                                  ),
+                                );
+                              },
+                              trailing: isAdmin
+                                  ? PopupMenuButton<String>(
+                                      onSelected: (value) async {
+                                        if (value == "edit") {
+                                          if (ad['type'] == "Banner") {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) => AddBannerFAB(
+                                                  userId: ad['userId'],
+                                                  adId: adId,
+                                                ),
+                                              ),
+                                            );
+                                          } else {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    AddClassifiedFAB(
+                                                      type: ad['type'],
+                                                      userId: ad['userId'],
+                                                      adId: adId,
+                                                    ),
+                                              ),
+                                            );
+                                          }
+                                        } else if (value == "extend") {
+                                          _showExtendDialog(adId, ad);
+                                        } else if (value == "delete") {
+                                          await FirebaseFirestore.instance
+                                              .collection("classifieds")
+                                              .doc(adId)
+                                              .delete();
+                                        }
+                                      },
+                                      itemBuilder: (ctx) => const [
+                                        PopupMenuItem(
+                                          value: "edit",
+                                          child: Text("Edit"),
+                                        ),
+                                        PopupMenuItem(
+                                          value: "extend",
+                                          child: Text("Extend"),
+                                        ),
+                                        PopupMenuItem(
+                                          value: "delete",
+                                          child: Text("Delete"),
+                                        ),
+                                      ],
+                                    )
+                                  : null,
+                            ),
+                          );
+                        },
                       );
                     },
                   );
@@ -121,20 +249,19 @@ class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
             ),
           ],
         ),
-
-        // ➕ Admin FAB: Select type & user ID before navigating
-        floatingActionButton: FloatingActionButton(
-          child: const Icon(Icons.add),
-          onPressed: _showAddClassifiedOptions,
-        ),
+        floatingActionButton: isAdmin
+            ? FloatingActionButton(
+                onPressed: _showAddClassifiedOptions,
+                child: const Icon(Icons.add),
+              )
+            : null,
       ),
     );
   }
 
-  // 📝 Show dialog to select Normal/Banner and enter User ID
   void _showAddClassifiedOptions() {
     String? selectedType;
-    final TextEditingController _userIdController = TextEditingController();
+    final TextEditingController userIdController = TextEditingController();
 
     showDialog(
       context: context,
@@ -143,47 +270,66 @@ class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Select Type
             DropdownButtonFormField<String>(
               decoration: const InputDecoration(labelText: "Ad Type"),
               items: ["Normal", "Banner"]
-                  .map((type) => DropdownMenuItem(value: type, child: Text(type)))
+                  .map(
+                    (type) => DropdownMenuItem(value: type, child: Text(type)),
+                  )
                   .toList(),
               onChanged: (val) => selectedType = val,
-              validator: (val) => val == null ? "Select type" : null,
             ),
             const SizedBox(height: 12),
-            // Enter User ID manually
             TextField(
-              controller: _userIdController,
+              controller: userIdController,
               decoration: const InputDecoration(
                 labelText: "User ID",
-                hintText: "Enter user ID for this ad",
                 border: OutlineInputBorder(),
               ),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancel"),
+          ),
           ElevatedButton(
             onPressed: () {
-              if (selectedType == null || _userIdController.text.trim().isEmpty) {
+              if (selectedType == null ||
+                  userIdController.text.trim().isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Select type and enter User ID")),
+                  const SnackBar(
+                    content: Text("Select type and enter User ID"),
+                  ),
                 );
                 return;
               }
               Navigator.pop(ctx);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => AddClassifiedFAB(
-                    type: selectedType!,
-                    userId: _userIdController.text.trim(),
+
+              // ✅ Navigate based on selection
+              if (selectedType == "Banner") {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AddBannerFAB(
+                      userId: userIdController.text.trim(),
+                      adId: '',
+                      // adId: null,
+                    ),
                   ),
-                ),
-              );
+                );
+              } else {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AddClassifiedFAB(
+                      type: selectedType!,
+                      userId: userIdController.text.trim(),
+                    ),
+                  ),
+                );
+              }
             },
             child: const Text("Continue"),
           ),
@@ -192,32 +338,43 @@ class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
     );
   }
 
-  // 📝 Show Extend Dialog
-  void _showExtendDialog(Map<String, dynamic> ad) {
-    int _extendDays = 7;
+  void _showExtendDialog(String adId, Map<String, dynamic> ad) {
+    int extendDays = 7;
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text("Extend ${ad['title']}"),
-        content: DropdownButton<int>(
-          value: _extendDays,
-          items: [7, 15, 30]
-              .map((e) => DropdownMenuItem(value: e, child: Text("$e days")))
-              .toList(),
-          onChanged: (val) {
-            if (val != null) setState(() => _extendDays = val);
-          },
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
-          ElevatedButton(
-            onPressed: () {
-              // TODO: Extend ad expiry
-              Navigator.pop(ctx);
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setStateDialog) => AlertDialog(
+          title: Text("Extend ${ad['title']}"),
+          content: DropdownButton<int>(
+            value: extendDays,
+            items: [7, 15, 30]
+                .map((e) => DropdownMenuItem(value: e, child: Text("$e days")))
+                .toList(),
+            onChanged: (val) {
+              if (val != null) setStateDialog(() => extendDays = val);
             },
-            child: const Text("Extend"),
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final newExpiry = (ad["expiryDate"] as Timestamp).toDate().add(
+                  Duration(days: extendDays),
+                );
+                await FirebaseFirestore.instance
+                    .collection("classifieds")
+                    .doc(adId)
+                    .update({"expiryDate": newExpiry});
+                if (!mounted) return;
+                Navigator.pop(ctx);
+              },
+              child: const Text("Extend"),
+            ),
+          ],
+        ),
       ),
     );
   }

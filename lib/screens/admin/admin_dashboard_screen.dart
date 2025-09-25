@@ -1,7 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
+
+  Future<int> _getClassifiedsCount() async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection("classifieds")
+        .get();
+    return snapshot.size; // returns total documents in "classifieds"
+  }
+
+  Future<int> _getMatrimonyCount() async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection("matrimony")
+        .get();
+    return snapshot.size;
+  }
+
+  Future<int> _getUsersCount() async {
+    final snapshot = await FirebaseFirestore.instance.collection("users").get();
+    return snapshot.size;
+  }
+
+  Future<int> _getMessagesCount() async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection("messages")
+        .get();
+    return snapshot.size;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -66,20 +93,100 @@ class AdminDashboardScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 📊 Stats Section
+            // 📊 Stats Section with FutureBuilder
             Row(
-              children: const [
-                Expanded(child: _StatsCard(title: "Classifieds", count: 120)),
-                SizedBox(width: 12),
-                Expanded(child: _StatsCard(title: "Matrimony", count: 45)),
+              children: [
+                Expanded(
+                  child: FutureBuilder<int>(
+                    future: _getClassifiedsCount(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const _StatsCard(
+                          title: "Total Classifieds",
+                          count: 0,
+                          isLoading: true,
+                        );
+                      } else if (snapshot.hasError) {
+                        return const _StatsCard(title: "Classifieds", count: 0);
+                      } else {
+                        return _StatsCard(
+                          title: "Total Classifieds",
+                          count: snapshot.data ?? 0,
+                        );
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FutureBuilder<int>(
+                    future: _getMatrimonyCount(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const _StatsCard(
+                          title: "Matrimony",
+                          count: 0,
+                          isLoading: true,
+                        );
+                      } else if (snapshot.hasError) {
+                        return const _StatsCard(title: "Matrimony", count: 0);
+                      } else {
+                        return _StatsCard(
+                          title: "Matrimony",
+                          count: snapshot.data ?? 0,
+                        );
+                      }
+                    },
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 12),
             Row(
-              children: const [
-                Expanded(child: _StatsCard(title: "Users", count: 340)),
-                SizedBox(width: 12),
-                Expanded(child: _StatsCard(title: "Messages", count: 8)),
+              children: [
+                Expanded(
+                  child: FutureBuilder<int>(
+                    future: _getUsersCount(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const _StatsCard(
+                          title: "Users",
+                          count: 0,
+                          isLoading: true,
+                        );
+                      } else if (snapshot.hasError) {
+                        return const _StatsCard(title: "Users", count: 0);
+                      } else {
+                        return _StatsCard(
+                          title: "Users",
+                          count: snapshot.data ?? 0,
+                        );
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FutureBuilder<int>(
+                    future: _getMessagesCount(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const _StatsCard(
+                          title: "Messages",
+                          count: 0,
+                          isLoading: true,
+                        );
+                      } else if (snapshot.hasError) {
+                        return const _StatsCard(title: "Messages", count: 0);
+                      } else {
+                        return _StatsCard(
+                          title: "Messages",
+                          count: snapshot.data ?? 0,
+                        );
+                      }
+                    },
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 24),
@@ -147,7 +254,7 @@ class AdminDashboardScreen extends StatelessWidget {
       leading: Icon(icon),
       title: Text(title),
       onTap: () {
-        Navigator.pop(context); // close drawer
+        Navigator.pop(context);
         Navigator.pushNamed(context, route);
       },
     );
@@ -193,8 +300,13 @@ class _DashboardTile extends StatelessWidget {
 class _StatsCard extends StatelessWidget {
   final String title;
   final int count;
+  final bool isLoading;
 
-  const _StatsCard({required this.title, required this.count});
+  const _StatsCard({
+    required this.title,
+    required this.count,
+    this.isLoading = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -204,12 +316,14 @@ class _StatsCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            Text(
-              "$count",
-              style: Theme.of(
-                context,
-              ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
+            isLoading
+                ? const CircularProgressIndicator()
+                : Text(
+                    "$count",
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
             const SizedBox(height: 8),
             Text(title, style: Theme.of(context).textTheme.bodyMedium),
           ],
