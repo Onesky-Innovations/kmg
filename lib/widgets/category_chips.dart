@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:kmg/theme/app_theme.dart';
 
 class CategoryChips extends StatefulWidget {
   const CategoryChips({super.key});
@@ -8,63 +9,68 @@ class CategoryChips extends StatefulWidget {
 }
 
 class _CategoryChipsState extends State<CategoryChips> {
-  // A list of example categories. In a real app, this would come from a data source.
-  final List<String> categories = const [
-    'Electronics',
-    'Vehicles',
-    'Real Estate',
-    'Jobs',
-    'Home & Garden',
-    'Services',
-    'Fashion',
-    'Sports',
-    'Books',
+  final List<Map<String, dynamic>> categories = [
+    {'name': 'Electronics', 'icon': Icons.devices},
+    {'name': 'Vehicles', 'icon': Icons.directions_car},
+    {'name': 'Real Estate', 'icon': Icons.home},
+    {'name': 'Jobs', 'icon': Icons.work},
+    {'name': 'Home & Garden', 'icon': Icons.home_outlined},
+    {'name': 'Services', 'icon': Icons.build},
+    {'name': 'Fashion', 'icon': Icons.checkroom},
+    {'name': 'Sports', 'icon': Icons.sports_soccer},
+    {'name': 'Books', 'icon': Icons.book},
   ];
 
-  // The currently selected category.
   String? _selectedCategory;
 
   @override
   Widget build(BuildContext context) {
-    // We use a SizedBox to give the ListView a specific height.
     return SizedBox(
-      height: 48, // A comfortable height for a row of chips.
+      height: 80, // enough height for icon + text
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
         scrollDirection: Axis.horizontal,
         itemCount: categories.length,
         itemBuilder: (context, index) {
           final category = categories[index];
-          // ChoiceChip is perfect for showing a selected state.
-          return ChoiceChip(
-            label: Text(category),
-            selected: _selectedCategory == category,
-            onSelected: (selected) {
+          final bool isSelected = _selectedCategory == category['name'];
+
+          return GestureDetector(
+            onTap: () {
               setState(() {
-                _selectedCategory = selected ? category : null;
-                // Here you would add the logic to filter your data based on the selected category.
-                // print('Selected category: $_selectedCategory');
+                _selectedCategory = isSelected ? null : category['name'];
               });
             },
-            selectedColor: Colors.blueAccent.withOpacity(0.8),
-            backgroundColor: Colors.grey[200],
-            labelStyle: TextStyle(
-              color: _selectedCategory == category
-                  ? Colors.white
-                  : Colors.grey[700],
-              fontWeight: FontWeight.bold,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20.0),
-              side: BorderSide(
-                color: _selectedCategory == category
-                    ? Colors.blueAccent
-                    : Colors.grey[300]!,
-              ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: Icon(
+                    category['icon'],
+                    color: isSelected
+                        ? AppTheme.ActiveIconOnPrimary
+                        : Colors.grey[700],
+                    size: 30,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  category['name'],
+                  style: TextStyle(
+                    color: isSelected
+                        ? AppTheme.ActiveIconOnPrimary
+                        : Colors.grey[700],
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
           );
         },
-        separatorBuilder: (context, index) => const SizedBox(width: 8.0),
+        separatorBuilder: (context, index) => const SizedBox(width: 16.0),
       ),
     );
   }

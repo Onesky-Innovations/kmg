@@ -60,21 +60,12 @@ class _DashboardScreenState extends State<DashboardScreen>
             )
           : null,
 
-      // Body
+      // Body ----CategoryChips,AutoScrollAd
+      
       body: Column(
         children: [
           const SizedBox(height: 5),
-
-          // if (_currentIndex == 0) ...[
-          //   const CategoryChips(),
-
-          //   // Simple banner call
-          //   const SimpleBanner(height: 150),
-
-          //   const SizedBox(height: 10),
-          // ],
-          //--------------------------------------------------------------------------------------------
-          //--------------------------------------------------------------------------------------------
+         
           if (_currentIndex == 0) ...[
             const CategoryChips(),
 
@@ -149,7 +140,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             onTabChangedListener: _onTabChanged,
             barBackgroundColor: Colors.transparent,
             circleColor: Colors.white,
-            activeIconColor: Colors.blueAccent.shade700,
+            activeIconColor: AppTheme.ActiveIconOnPrimary,
             inactiveIconColor: Colors.white70,
             textColor: Colors.white,
             hasElevationShadows: true,

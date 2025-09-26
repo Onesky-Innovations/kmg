@@ -11,4 +11,5 @@ class AppTheme {
     end: Alignment.bottomRight,
   );
   static const Color iconOnPrimary = Colors.white;
+  static const Color ActiveIconOnPrimary = Color.fromARGB(255, 247, 50, 247);
 }

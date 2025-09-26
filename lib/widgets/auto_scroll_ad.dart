@@ -44,14 +44,13 @@ class _AutoScrollAdState extends State<AutoScrollAd> {
     return SizedBox(
       height: widget.height,
       child: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('classifieds')
-            .doc('baners')
-            .collection('baner')
-            .where('status', isEqualTo: 'Active')
-            .orderBy('createdAt', descending: true)
-            .snapshots(),
+        stream:FirebaseFirestore.instance
+        .collection("classifieds")
+        .doc("baners")
+        .collection("baner")
+        .orderBy("createdAt", descending: true).snapshots(),
         builder: (context, snapshot) {
+          
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
