@@ -4,6 +4,7 @@ import 'package:kmg/screens/settings/profile_screen.dart';
 import 'package:kmg/theme/app_theme.dart';
 import 'package:kmg/widgets/custom_app_bar.dart';
 import 'package:kmg/widgets/category_chips.dart';
+// import 'package:kmg/widgets/simplebanershow.dart';
 import 'package:kmg/widgets/auto_scroll_ad.dart';
 import '../ads/ads_feed_screen.dart';
 import '../saved/saved_screen.dart';
@@ -64,18 +65,27 @@ class _DashboardScreenState extends State<DashboardScreen>
         children: [
           const SizedBox(height: 5),
 
+          // if (_currentIndex == 0) ...[
+          //   const CategoryChips(),
+
+          //   // Simple banner call
+          //   const SimpleBanner(height: 150),
+
+          //   const SizedBox(height: 10),
+          // ],
+          //--------------------------------------------------------------------------------------------
+          //--------------------------------------------------------------------------------------------
           if (_currentIndex == 0) ...[
             const CategoryChips(),
 
             // Auto-scroll icon ad
             AutoScrollAd(
-              adIcons: [Icons.shopping_cart, Icons.local_offer, Icons.star],
+              // adIcons: [Icons.shopping_cart, Icons.local_offer, Icons.star],
               height: 150,
             ),
 
             const SizedBox(height: 10),
           ],
-
           Expanded(child: _pages[_currentIndex]),
         ],
       ),

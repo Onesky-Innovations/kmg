@@ -5,11 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class AutoScrollAd extends StatefulWidget {
   final double height;
 
-  const AutoScrollAd({
-    super.key,
-    this.height = 180,
-    required List<IconData> adIcons,
-  });
+  const AutoScrollAd({super.key, this.height = 180});
 
   @override
   State<AutoScrollAd> createState() => _AutoScrollAdState();
@@ -19,6 +15,7 @@ class _AutoScrollAdState extends State<AutoScrollAd> {
   late final PageController _pageController;
   int _currentPage = 0;
   Timer? _timer;
+  int _lastItemCount = 0;
 
   @override
   void initState() {
@@ -28,29 +25,18 @@ class _AutoScrollAdState extends State<AutoScrollAd> {
 
   void _startAutoScroll(int itemCount) {
     _timer?.cancel();
-    if (itemCount <= 1) return;
+    if (itemCount <= 1) return; // Only scroll if more than 1 banner
 
     _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
-      if (_currentPage < itemCount - 1) {
-        _currentPage++;
-      } else {
-        _currentPage = 0;
-      }
-      if (_pageController.hasClients) {
-        _pageController.animateToPage(
-          _currentPage,
-          duration: const Duration(milliseconds: 500),
-          curve: Curves.easeInOut,
-        );
-      }
-    });
-  }
+      if (!_pageController.hasClients) return;
 
-  @override
-  void dispose() {
-    _pageController.dispose();
-    _timer?.cancel();
-    super.dispose();
+      _currentPage = (_currentPage + 1) % itemCount;
+      _pageController.animateToPage(
+        _currentPage,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+      );
+    });
   }
 
   @override
@@ -60,7 +46,8 @@ class _AutoScrollAdState extends State<AutoScrollAd> {
       child: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('classifieds')
-            .where('type', isEqualTo: 'Banner')
+            .doc('baners')
+            .collection('baner')
             .where('status', isEqualTo: 'Active')
             .orderBy('createdAt', descending: true)
             .snapshots(),
@@ -74,48 +61,44 @@ class _AutoScrollAdState extends State<AutoScrollAd> {
             return const Center(child: Text("No banners available"));
           }
 
-          // Start auto-scroll when data arrives
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _startAutoScroll(docs.length);
-          });
+          // Start auto-scroll if banner count changes
+          if (_lastItemCount != docs.length) {
+            _lastItemCount = docs.length;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _startAutoScroll(docs.length);
+            });
+          }
 
           return PageView.builder(
             controller: _pageController,
             itemCount: docs.length,
             itemBuilder: (context, index) {
               final ad = docs[index].data() as Map<String, dynamic>;
+              final images = ad['images'] as List<dynamic>? ?? [];
+              final imageUrl = images.isNotEmpty ? images[0] : null;
+
               return Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(12.0),
                 child: Container(
                   decoration: BoxDecoration(
                     color: Colors.blueAccent.shade100,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Stack(
+                    fit: StackFit.expand,
                     children: [
-                      // Image or Placeholder
                       ClipRRect(
                         borderRadius: BorderRadius.circular(16),
-                        child: (ad['images'] != null && ad['images'].isNotEmpty)
+                        child: imageUrl != null
                             ? Image.network(
-                                ad['images'][0],
-                                height: widget.height,
-                                width: double.infinity,
+                                imageUrl,
                                 fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return _placeholder();
+                                },
                               )
-                            : Container(
-                                height: widget.height,
-                                width: double.infinity,
-                                color: Colors.blueAccent.shade200,
-                                child: const Icon(
-                                  Icons.image,
-                                  size: 64,
-                                  color: Colors.white,
-                                ),
-                              ),
+                            : _placeholder(),
                       ),
-
-                      // Title overlay
                       Positioned(
                         bottom: 12,
                         left: 12,
@@ -149,5 +132,21 @@ class _AutoScrollAdState extends State<AutoScrollAd> {
         },
       ),
     );
+  }
+
+  Widget _placeholder() {
+    return Container(
+      color: Colors.blueAccent.shade200,
+      child: const Center(
+        child: Icon(Icons.image, size: 64, color: Colors.white),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    _timer?.cancel();
+    super.dispose();
   }
 }

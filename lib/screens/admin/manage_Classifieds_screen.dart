@@ -93,18 +93,30 @@ class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
               child: TabBarView(
                 controller: _tabController,
                 children: _tabs.map((tab) {
+                  // 👇 Different collection for Banners
+                  final query = tab == "Banners"
+                      ? FirebaseFirestore.instance
+                            .collection("classifieds")
+                            .doc("baners")
+                            .collection("baner")
+                            .orderBy("createdAt", descending: true)
+                      : FirebaseFirestore.instance
+                            .collection("classifieds")
+                            .orderBy("createdAt", descending: true);
+
                   return StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection("classifieds")
-                        .orderBy("createdAt", descending: true)
-                        .snapshots(),
+                    stream: query.snapshots(),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator());
                       }
                       if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                        return const Center(
-                          child: Text("No classifieds found"),
+                        return Center(
+                          child: Text(
+                            tab == "Banners"
+                                ? "No banners found"
+                                : "No classifieds found",
+                          ),
                         );
                       }
 
@@ -117,11 +129,14 @@ class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
                             ? (data["expiryDate"] as Timestamp).toDate()
                             : null;
 
-                        // Search filter
+                        // 🔍 Search filter
                         if (_searchController.text.isNotEmpty &&
-                            !data["title"].toString().toLowerCase().contains(
-                              _searchController.text.toLowerCase(),
-                            )) {
+                            !(data["title"] ?? "")
+                                .toString()
+                                .toLowerCase()
+                                .contains(
+                                  _searchController.text.toLowerCase(),
+                                )) {
                           return false;
                         }
 
@@ -138,7 +153,10 @@ class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
                         if (tab == "Featured") {
                           return data["isFeatured"] == true;
                         }
-                        if (tab == "Banners") return data["type"] == "Banner";
+                        if (tab == "Banners") {
+                          return data["status"] ==
+                              "Active"; // banners already separate
+                        }
 
                         return true;
                       }).toList();
@@ -173,7 +191,9 @@ class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
                                   : const Icon(Icons.image, size: 40),
                               title: Text(ad['title'] ?? "No title"),
                               subtitle: Text(
-                                "User: ${ad['userId']}\nExpiry: ${ad['expiryDate']?.toDate()?.toString().split(" ").first ?? "N/A"}",
+                                tab == "Banners"
+                                    ? "Banner Ad"
+                                    : "User: ${ad['userId']}\nExpiry: ${ad['expiryDate']?.toDate()?.toString().split(" ").first ?? "N/A"}",
                               ),
                               onTap: () {
                                 Navigator.push(
@@ -186,58 +206,6 @@ class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
                                   ),
                                 );
                               },
-                              trailing: isAdmin
-                                  ? PopupMenuButton<String>(
-                                      onSelected: (value) async {
-                                        if (value == "edit") {
-                                          if (ad['type'] == "Banner") {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) => AddBannerFAB(
-                                                  userId: ad['userId'],
-                                                  adId: adId,
-                                                ),
-                                              ),
-                                            );
-                                          } else {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) =>
-                                                    AddClassifiedFAB(
-                                                      type: ad['type'],
-                                                      userId: ad['userId'],
-                                                      adId: adId,
-                                                    ),
-                                              ),
-                                            );
-                                          }
-                                        } else if (value == "extend") {
-                                          _showExtendDialog(adId, ad);
-                                        } else if (value == "delete") {
-                                          await FirebaseFirestore.instance
-                                              .collection("classifieds")
-                                              .doc(adId)
-                                              .delete();
-                                        }
-                                      },
-                                      itemBuilder: (ctx) => const [
-                                        PopupMenuItem(
-                                          value: "edit",
-                                          child: Text("Edit"),
-                                        ),
-                                        PopupMenuItem(
-                                          value: "extend",
-                                          child: Text("Extend"),
-                                        ),
-                                        PopupMenuItem(
-                                          value: "delete",
-                                          child: Text("Delete"),
-                                        ),
-                                      ],
-                                    )
-                                  : null,
                             ),
                           );
                         },
