@@ -3,7 +3,16 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../ads/ad_detail_screen.dart';
 
 class AdsFeedScreen extends StatelessWidget {
-  const AdsFeedScreen({super.key});
+  final String? selectedCategory;
+  final String searchQuery; // live search
+  final String selectedPlace; // new: filter by place
+
+  const AdsFeedScreen({
+    super.key,
+    this.selectedCategory,
+    this.searchQuery = "",
+    this.selectedPlace = "All Places",
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -28,21 +37,45 @@ class AdsFeedScreen extends StatelessWidget {
 
         final docs = snapshot.data!.docs;
 
-        // Filter only "Active" classifieds
         final activeAds = docs.where((doc) {
           final data = doc.data() as Map<String, dynamic>;
           final expiry = data['expiryDate'] != null
               ? (data['expiryDate'] as Timestamp).toDate()
               : null;
-          return data['status'] == 'Active' &&
+
+          final isActive =
+              data['status'] == 'Active' &&
               (expiry == null || expiry.isAfter(DateTime.now()));
+
+          final matchesCategory =
+              selectedCategory == null || data['category'] == selectedCategory;
+
+          final matchesSearch =
+              searchQuery.isEmpty ||
+              (data['title'] ?? "").toString().toLowerCase().contains(
+                searchQuery,
+              ) ||
+              (data['category'] ?? "").toString().toLowerCase().contains(
+                searchQuery,
+              );
+
+          final matchesPlace =
+              selectedPlace == "All Places" ||
+              (data['place'] ?? "").toString().toLowerCase() ==
+                  selectedPlace.toLowerCase();
+
+          return isActive && matchesCategory && matchesSearch && matchesPlace;
         }).toList();
 
         if (activeAds.isEmpty) {
-          return const Center(
+          return Center(
             child: Text(
-              "No active classifieds available",
-              style: TextStyle(fontSize: 18),
+              searchQuery.isNotEmpty
+                  ? "No results found"
+                  : selectedCategory == null
+                  ? "No active classifieds available"
+                  : "No classifieds found in $selectedCategory",
+              style: const TextStyle(fontSize: 18),
             ),
           );
         }
@@ -51,7 +84,6 @@ class AdsFeedScreen extends StatelessWidget {
           itemCount: activeAds.length,
           itemBuilder: (ctx, index) {
             final ad = activeAds[index].data() as Map<String, dynamic>;
-
             return Card(
               margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
               child: ListTile(
@@ -63,21 +95,6 @@ class AdsFeedScreen extends StatelessWidget {
                           width: 60,
                           height: 60,
                           fit: BoxFit.cover,
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return const SizedBox(
-                              width: 60,
-                              height: 60,
-                              child: Center(
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              ),
-                            );
-                          },
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Icon(Icons.broken_image, size: 40);
-                          },
                         ),
                       )
                     : const Icon(Icons.image, size: 40),
@@ -99,6 +116,7 @@ class AdsFeedScreen extends StatelessWidget {
                   ],
                 ),
                 subtitle: Text(
+                  "Place: ${ad['place'] ?? 'N/A'}\n"
                   "Price: ${ad['price'] != null ? "₹${ad['price']}" : "Not specified"}\n"
                   "Expiry: ${ad['expiryDate'] != null ? (ad['expiryDate'] as Timestamp).toDate().toString().split(" ").first : "N/A"}",
                 ),

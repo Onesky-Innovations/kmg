@@ -1,7 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'dart:collection';
 
 import 'package:kmg/theme/app_theme.dart';
+import 'package:kmg/widgets/search_bar.dart';
 
 // --- Logo + App Name ---
 class AppLogoName extends StatelessWidget {
@@ -36,26 +39,150 @@ class AppLogoName extends StatelessWidget {
 }
 
 // --- Place Selector ---
-class PlaceSelector extends StatelessWidget {
-  final String defaultPlace;
-  final VoidCallback? onTap;
+class PlaceSelector extends StatefulWidget {
+  final String selectedPlace;
+  final ValueChanged<String>? onPlaceSelected;
 
   const PlaceSelector({
     super.key,
-    this.defaultPlace = 'All Places',
-    this.onTap,
+    this.selectedPlace = 'All Places',
+    this.onPlaceSelected,
   });
+
+  @override
+  State<PlaceSelector> createState() => _PlaceSelectorState();
+}
+
+class _PlaceSelectorState extends State<PlaceSelector> {
+  final List<String> _prefixPlaces = [
+    "All Places",
+    "Kannur",
+    "Kozhikode",
+    "Malappuram",
+    "Thrissur",
+  ]; // default prefix places
+
+  List<String> _allPlaces = [];
+  List<String> _filteredPlaces = [];
+  Timer? _debounce;
+
+  @override
+  void initState() {
+    super.initState();
+    _allPlaces = [..._prefixPlaces];
+    _filteredPlaces = _prefixPlaces; // start with only prefix
+    _fetchPlacesFromFirestore();
+  }
+
+  // Fetch all places from Firestore
+  Future<void> _fetchPlacesFromFirestore() async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('classifieds')
+        .get();
+
+    final firestorePlaces = snapshot.docs
+        .map((doc) => (doc.data() as Map<String, dynamic>)['place'] as String?)
+        .where((place) => place != null && place.isNotEmpty)
+        .cast<String>()
+        .toList();
+
+    setState(() {
+      _allPlaces = LinkedHashSet<String>.from([
+        ..._prefixPlaces,
+        ...firestorePlaces,
+      ]).toList();
+
+      _filteredPlaces = _prefixPlaces; // still show only prefix until search
+    });
+  }
+
+  // Filter places
+  void _filterPlaces(String query) {
+    final lowerQuery = query.toLowerCase();
+
+    if (query.isEmpty) {
+      // show only prefix places when nothing typed
+      _filteredPlaces = _prefixPlaces;
+    } else {
+      // show all (prefix + firestore) when searching
+      _filteredPlaces = _allPlaces
+          .where((place) => place.toLowerCase().contains(lowerQuery))
+          .toList();
+    }
+  }
+
+  void _onSearchChanged(String val) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 250), () {
+      if (!mounted) return;
+      setState(() {
+        _filterPlaces(val);
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () async {
+        final selected = await showDialog<String>(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: const Text("Select Place"),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      decoration: const InputDecoration(
+                        hintText: "Search place...",
+                      ),
+                      onChanged: _onSearchChanged,
+                    ),
+                    const SizedBox(height: 8),
+                    Flexible(
+                      child: _filteredPlaces.isEmpty
+                          ? const Center(child: Text("No matching places"))
+                          : ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: _filteredPlaces.length,
+                              itemBuilder: (context, index) {
+                                if (index >= _filteredPlaces.length) {
+                                  return const SizedBox.shrink();
+                                }
+                                final place = _filteredPlaces[index];
+                                return ListTile(
+                                  title: Text(place),
+                                  onTap: () => Navigator.pop(context, place),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+
+        if (selected != null && widget.onPlaceSelected != null) {
+          widget.onPlaceSelected!(selected);
+        }
+      },
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Flexible(
             child: Text(
-              defaultPlace,
+              widget.selectedPlace,
               style: const TextStyle(color: Colors.white, fontSize: 14),
               overflow: TextOverflow.ellipsis,
             ),
@@ -85,122 +212,21 @@ class NotificationBell extends StatelessWidget {
   }
 }
 
-// --- Search Bar with Animated Categories ---
-class AnimatedSearchBar extends StatefulWidget {
-  final VoidCallback? onFilterTap;
-
-  const AnimatedSearchBar({super.key, this.onFilterTap});
-
-  @override
-  State<AnimatedSearchBar> createState() => _AnimatedSearchBarState();
-}
-
-class _AnimatedSearchBarState extends State<AnimatedSearchBar> {
-  final List<String> _categories = [
-    'used bikes',
-    'land for sale',
-    'apartments for rent',
-    'mobile phones',
-  ];
-
-  int _currentIndex = 0;
-  late Timer _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 3), (_) {
-      if (mounted) {
-        setState(() {
-          _currentIndex = (_currentIndex + 1) % _categories.length;
-        });
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 40,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Row(
-        children: [
-          const Icon(Icons.search, color: Colors.grey, size: 20),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Row(
-              children: [
-                const Text(
-                  'Search ',
-                  style: TextStyle(color: Colors.grey, fontSize: 14),
-                ),
-                Expanded(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 500),
-                    transitionBuilder: (child, animation) {
-                      final offsetAnim = Tween<Offset>(
-                        begin: const Offset(1, 0),
-                        end: Offset.zero,
-                      ).animate(animation);
-                      return ClipRect(
-                        child: SlideTransition(
-                          position: offsetAnim,
-                          child: child,
-                        ),
-                      );
-                    },
-                    child: Text(
-                      _categories[_currentIndex],
-                      key: ValueKey<int>(_currentIndex),
-                      style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            icon: const Icon(
-              Icons.filter_list,
-              color: Colors.blueAccent,
-              size: 20,
-            ),
-            onPressed: widget.onFilterTap,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 35),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // --- Custom App Bar ---
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
-  final VoidCallback? onPlaceSelectTap;
+  final ValueChanged<String>? onPlaceSelect;
   final VoidCallback? onFilterTap;
   final VoidCallback? onNotificationTap;
+  final ValueChanged<String>? onSearch;
+  final String selectedPlace;
 
   const CustomAppBar({
     super.key,
-    this.onPlaceSelectTap,
+    this.onPlaceSelect,
     this.onFilterTap,
     this.onNotificationTap,
+    this.onSearch,
+    this.selectedPlace = "All Places",
   });
 
   @override
@@ -217,13 +243,12 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           bottomRight: Radius.circular(12),
         ),
       ),
-
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(height: 10),
-          // Top Row: Logo + Place Selector
+          const SizedBox(height: 10),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const AppLogoName(
                 logoSize: 28,
@@ -234,15 +259,22 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                 ),
               ),
               const Spacer(),
-              PlaceSelector(onTap: onPlaceSelectTap),
+              // Keep PlaceSelector fixed at right side
+              PlaceSelector(
+                selectedPlace: selectedPlace,
+                onPlaceSelected: onPlaceSelect,
+              ),
             ],
           ),
           const SizedBox(height: 6),
-
-          // Search Bar with animated category text
           Row(
             children: [
-              Expanded(child: AnimatedSearchBar(onFilterTap: onFilterTap)),
+              Expanded(
+                child: AnimatedSearchBar(
+                  onSearch: onSearch,
+                  onFilterTap: onFilterTap,
+                ),
+              ),
               const SizedBox(width: 6),
               NotificationBell(onTap: onNotificationTap),
             ],

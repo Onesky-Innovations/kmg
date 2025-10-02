@@ -4,8 +4,8 @@ import 'package:kmg/screens/settings/profile_screen.dart';
 import 'package:kmg/theme/app_theme.dart';
 import 'package:kmg/widgets/custom_app_bar.dart';
 import 'package:kmg/widgets/category_chips.dart';
-// import 'package:kmg/widgets/simplebanershow.dart';
 import 'package:kmg/widgets/auto_scroll_ad.dart';
+
 import '../ads/ads_feed_screen.dart';
 import '../saved/saved_screen.dart';
 import '../matrimony/matrimony_screen.dart';
@@ -21,13 +21,9 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen>
     with TickerProviderStateMixin {
   int _currentIndex = 0;
-
-  final List<Widget> _pages = const [
-    AdsFeedScreen(),
-    MatrimonyScreen(),
-    SavedScreen(),
-    ProfileScreen(),
-  ];
+  String? _selectedCategory;
+  String _searchQuery = "";
+  String _selectedPlace = "All Places"; // <-- added place
 
   final List<TabData> _tabs = [
     TabData(icon: Icons.home, title: "Home", iconSize: 28),
@@ -36,121 +32,140 @@ class _DashboardScreenState extends State<DashboardScreen>
     TabData(icon: Icons.person, title: "Profile", iconSize: 28),
   ];
 
-  void _onTabChanged(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
-  }
+  void _onTabChanged(int index) => setState(() => _currentIndex = index);
 
-  void _onFabPressed() {
-    Navigator.pushNamed(context, "/submitAd");
-  }
+  void _onFabPressed() => Navigator.pushNamed(context, "/submitAd");
+
+  void _onSearchChanged(String query) => setState(() => _searchQuery = query);
+
+  void _onPlaceSelected(String place) => setState(() => _selectedPlace = place);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.background,
-
-      // AppBar only for Home
       appBar: _currentIndex == 0
           ? CustomAppBar(
-              onFilterTap: () {},
-              onPlaceSelectTap: () {},
-              onNotificationTap: () {},
+              selectedPlace: _selectedPlace,
+              onSearch: _onSearchChanged,
+              onPlaceSelect: _onPlaceSelected, // <-- place updates here
             )
           : null,
+      body: _currentIndex == 0
+          ? NestedScrollView(
+              headerSliverBuilder:
+                  (BuildContext context, bool innerBoxIsScrolled) {
+                    return <Widget>[
+                      const SliverToBoxAdapter(child: SizedBox(height: 5)),
 
-      // Body ----CategoryChips,AutoScrollAd
-      
-      body: Column(
-        children: [
-          const SizedBox(height: 5),
-         
-          if (_currentIndex == 0) ...[
-            const CategoryChips(),
+                      // Category Chips
+                      SliverToBoxAdapter(
+                        child: CategoryChips(
+                          selectedCategory: _selectedCategory,
+                          onCategorySelected: (category) =>
+                              setState(() => _selectedCategory = category),
+                        ),
+                      ),
 
-            // Auto-scroll icon ad
-            AutoScrollAd(
-              // adIcons: [Icons.shopping_cart, Icons.local_offer, Icons.star],
-              height: 150,
-            ),
+                      // Auto scrolling ads
+                      SliverToBoxAdapter(child: AutoScrollAd(height: 150)),
+                      const SliverToBoxAdapter(child: SizedBox(height: 10)),
+                    ];
+                  },
 
-            const SizedBox(height: 10),
-          ],
-          Expanded(child: _pages[_currentIndex]),
-        ],
-      ),
-
-      // FAB with slide + glow animation
-      floatingActionButton: _currentIndex == 0
-          ? TweenAnimationBuilder<Offset>(
-              tween: Tween(begin: const Offset(0, 1), end: Offset.zero),
-              duration: const Duration(milliseconds: 400),
-              curve: Curves.easeOutBack,
-              builder: (context, offset, child) {
-                return Transform.translate(
-                  offset: offset * 50,
-                  child: Opacity(opacity: 1.0, child: child),
-                );
-              },
-              child: Container(
-                height: 60,
-                width: 60,
-                decoration: BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: RawMaterialButton(
-                  onPressed: _onFabPressed,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: const Icon(
-                    Icons.add,
-                    size: 32,
-                    color: AppTheme.iconOnPrimary,
-                  ),
-                ),
+              body: AdsFeedScreen(
+                selectedCategory: _selectedCategory,
+                searchQuery: _searchQuery,
+                selectedPlace: _selectedPlace, // <-- pass to feed
               ),
             )
+          : _getPage(_currentIndex),
+      floatingActionButton: _currentIndex == 0
+          ? _buildFab()
           : const SizedBox.shrink(),
+      bottomNavigationBar: _buildBottomNav(),
+    );
+  }
 
-      // Curved Gradient Circle Bottom Navigation
-      bottomNavigationBar: Container(
-        height: 70,
+  Widget _buildFab() {
+    return TweenAnimationBuilder<Offset>(
+      tween: Tween(begin: const Offset(0, 1), end: Offset.zero),
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeOutBack,
+      builder: (context, offset, child) {
+        return Transform.translate(
+          offset: offset * 50,
+          child: Opacity(opacity: 1.0, child: child),
+        );
+      },
+      child: Container(
+        height: 60,
+        width: 60,
         decoration: BoxDecoration(
           gradient: AppTheme.primaryGradient,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(32),
-            topRight: Radius.circular(32),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.blueAccent.withOpacity(0.3),
-              blurRadius: 12,
-              spreadRadius: 1,
-            ),
-          ],
+          borderRadius: BorderRadius.circular(16),
         ),
-        child: Padding(
-          padding: const EdgeInsets.only(top: 10),
-          child: CircleBottomNavigation(
-            tabs: _tabs,
-            initialSelection: _currentIndex,
-            onTabChangedListener: _onTabChanged,
-            barBackgroundColor: Colors.transparent,
-            circleColor: Colors.white,
-            activeIconColor: AppTheme.ActiveIconOnPrimary,
-            inactiveIconColor: Colors.white70,
-            textColor: Colors.white,
-            hasElevationShadows: true,
-            blurShadowRadius: 12,
-            circleSize: 60,
-            arcHeight: 70,
-            arcWidth: 90,
+        child: RawMaterialButton(
+          onPressed: _onFabPressed,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
+          child: const Icon(Icons.add, size: 32, color: AppTheme.iconOnPrimary),
         ),
       ),
     );
+  }
+
+  Widget _buildBottomNav() {
+    return Container(
+      height: 70,
+      decoration: BoxDecoration(
+        gradient: AppTheme.primaryGradient,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(32),
+          topRight: Radius.circular(32),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.blueAccent.withOpacity(0.3),
+            blurRadius: 12,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(top: 10),
+        child: CircleBottomNavigation(
+          tabs: _tabs,
+          initialSelection: _currentIndex,
+          onTabChangedListener: _onTabChanged,
+          barBackgroundColor: Colors.transparent,
+          circleColor: Colors.white,
+          activeIconColor: AppTheme.ActiveIconOnPrimary,
+          inactiveIconColor: Colors.white70,
+          textColor: Colors.white,
+          hasElevationShadows: true,
+          blurShadowRadius: 12,
+          circleSize: 60,
+          arcHeight: 70,
+          arcWidth: 90,
+        ),
+      ),
+    );
+  }
+
+  Widget _getPage(int index) {
+    switch (index) {
+      case 0:
+        return const SizedBox.shrink();
+      case 1:
+        return const MatrimonyScreen();
+      case 2:
+        return const SavedScreen();
+      case 3:
+        return const ProfileScreen();
+      default:
+        return const SizedBox.shrink();
+    }
   }
 }

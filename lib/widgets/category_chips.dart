@@ -2,7 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:kmg/theme/app_theme.dart';
 
 class CategoryChips extends StatefulWidget {
-  const CategoryChips({super.key});
+  final Function(String?) onCategorySelected; // callback to parent
+  final String? selectedCategory; // current selection from parent
+
+  const CategoryChips({
+    super.key,
+    required this.onCategorySelected,
+    this.selectedCategory,
+  });
 
   @override
   State<CategoryChips> createState() => _CategoryChipsState();
@@ -21,25 +28,23 @@ class _CategoryChipsState extends State<CategoryChips> {
     {'name': 'Books', 'icon': Icons.book},
   ];
 
-  String? _selectedCategory;
-
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 80, // enough height for icon + text
+      height: 80,
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
         scrollDirection: Axis.horizontal,
         itemCount: categories.length,
         itemBuilder: (context, index) {
           final category = categories[index];
-          final bool isSelected = _selectedCategory == category['name'];
+          final bool isSelected = widget.selectedCategory == category['name'];
 
           return GestureDetector(
             onTap: () {
-              setState(() {
-                _selectedCategory = isSelected ? null : category['name'];
-              });
+              widget.onCategorySelected(
+                isSelected ? null : category['name'],
+              ); // pass back
             },
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,

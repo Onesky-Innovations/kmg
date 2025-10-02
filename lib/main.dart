@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:kmg/screens/admin/manageMatrimony.dart';
 import 'firebase_options.dart';
 
 import 'screens/landing/landing_screen.dart';
@@ -9,7 +10,6 @@ import 'screens/ads/add_submit_screen.dart';
 import 'screens/ads/matri_submit_screen.dart';
 import 'screens/settings/profile_screen.dart';
 import 'screens/admin/manage_Classifieds_screen.dart';
-
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -59,7 +59,7 @@ class MyApp extends StatelessWidget {
         "/matrimony": (context) => const MatriSubmitScreen(),
         "/profile": (context) => const ProfileScreen(),
         "/manageClassifieds": (context) => const ManageClassifiedsScreen(),
-        
+        "/manageMatrimony": (context) => const ManageMatrimonyScreen(),
       },
     );
   }

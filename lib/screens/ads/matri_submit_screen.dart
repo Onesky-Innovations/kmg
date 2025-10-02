@@ -5,79 +5,53 @@ class MatriSubmitScreen extends StatefulWidget {
   const MatriSubmitScreen({super.key});
 
   @override
-  State<MatriSubmitScreen> createState() => _matriSubmitScreenState();
+  State<MatriSubmitScreen> createState() => _MatriSubmitScreenState();
 }
 
-class _matriSubmitScreenState extends State<MatriSubmitScreen> {
+class _MatriSubmitScreenState extends State<MatriSubmitScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _titleController = TextEditingController();
-  final _priceController = TextEditingController();
-  final _locationController = TextEditingController();
-  final _categoryController = TextEditingController();
-  final _descriptionController = TextEditingController();
+
+  final _nameController = TextEditingController();
+  final _motherTongueController = TextEditingController();
+  final _mobileController = TextEditingController();
+
+  // Dropdown value
+  String? _selectedProfileFor;
 
   // Admin WhatsApp number
   final String adminPhone = "917907708822";
 
-  bool showMalayalam = false;
-
-  @override
-  void initState() {
-    super.initState();
-    // Toggle text every 3 seconds
-    Future.doWhile(() async {
-      await Future.delayed(const Duration(seconds: 3));
-      if (!mounted) return false;
-      setState(() => showMalayalam = !showMalayalam);
-      return true;
-    });
-  }
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _priceController.dispose();
-    _locationController.dispose();
-    _categoryController.dispose();
-    _descriptionController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submitAd() async {
+  Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_selectedProfileFor == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please select who you are creating profile for"),
+        ),
+      );
+      return;
+    }
 
     final String message = Uri.encodeComponent(
-      "📢 New Ad Submission\n"
-      "📝 Title: ${_titleController.text}\n"
-      "💰 Price: ₹${_priceController.text}\n"
-      "📍 Location: ${_locationController.text}\n"
-      "📂 Category: ${_categoryController.text}\n"
-      "ℹ️ Description: ${_descriptionController.text}",
+      "💌 Matrimony Registration\n"
+      "👤 Name: ${_nameController.text}\n"
+      "📝 Profile For: $_selectedProfileFor\n"
+      "🗣 Mother Tongue: ${_motherTongueController.text}\n"
+      "📱 Mobile: +91 ${_mobileController.text}",
     );
 
     final Uri whatsappUri = Uri.parse(
       "https://wa.me/$adminPhone?text=$message",
     );
-    final Uri smsUri = Uri.parse("sms:$adminPhone?body=$message");
 
     try {
       if (await canLaunchUrl(whatsappUri)) {
         await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
-      } else if (await canLaunchUrl(smsUri)) {
-        await launchUrl(smsUri, mode: LaunchMode.externalApplication);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("No app available to send the message."),
-          ),
+          const SnackBar(content: Text("WhatsApp is not available.")),
         );
       }
-
-      _titleController.clear();
-      _priceController.clear();
-      _locationController.clear();
-      _categoryController.clear();
-      _descriptionController.clear();
     } catch (e) {
       ScaffoldMessenger.of(
         context,
@@ -86,16 +60,23 @@ class _matriSubmitScreenState extends State<MatriSubmitScreen> {
   }
 
   @override
+  void dispose() {
+    _nameController.dispose();
+    _motherTongueController.dispose();
+    _mobileController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: const Text(
-          "Submit Your Matrimony Ad",
+          "Register Free",
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        iconTheme: const IconThemeData(color: Colors.white),
-        backgroundColor: Colors.blueAccent,
+        backgroundColor: Colors.pinkAccent,
         centerTitle: true,
       ),
       body: Padding(
@@ -105,61 +86,80 @@ class _matriSubmitScreenState extends State<MatriSubmitScreen> {
           child: SingleChildScrollView(
             child: Column(
               children: [
-                // 🔹 Animated English ↔ Malayalam text
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 600),
-                  transitionBuilder: (child, animation) =>
-                      FadeTransition(opacity: animation, child: child),
-                  child: Text(
-                    showMalayalam
-                        ? "✨ “സബ്മിറ്റ് അമർത്തിയതിന് ശേഷം, നിങ്ങളുടെ ഉൽപ്പന്നത്തിന്റെ ഫോട്ടോകളും വീഡിയോകളും വാട്സ്ആപ്പിൽ പങ്കിടാം!”"
-                        : "✨ “Once you hit submit, easily share your product photos & videos with us on WhatsApp!”",
-                    key: ValueKey(showMalayalam),
-                    style: TextStyle(fontSize: 16, color: Colors.grey[700]),
-                    textAlign: TextAlign.center,
+                Text(
+                  "We help you find your perfect partner and perfect family",
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
                   ),
+                  textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
+
+                // Name
                 _buildTextField(
-                  controller: _titleController,
-                  labelText: "Ad Title",
-                  icon: Icons.title,
+                  controller: _nameController,
+                  labelText: "Name",
+                  icon: Icons.person,
                   validator: (value) =>
-                      value!.isEmpty ? "Please enter a title" : null,
+                      value!.isEmpty ? "Please enter your name" : null,
                 ),
                 const SizedBox(height: 16),
+
+                // Create Profile For (Dropdown)
+                _buildDropdown(),
+
+                const SizedBox(height: 16),
+
+                // Mother Tongue
                 _buildTextField(
-                  controller: _priceController,
-                  labelText: "Price (₹)",
-                  icon: Icons.currency_rupee,
-                  keyboardType: TextInputType.number,
+                  controller: _motherTongueController,
+                  labelText: "Mother Tongue",
+                  icon: Icons.language,
                   validator: (value) =>
-                      value!.isEmpty ? "Please enter a price" : null,
+                      value!.isEmpty ? "Please enter mother tongue" : null,
                 ),
                 const SizedBox(height: 16),
-                _buildTextField(
-                  controller: _locationController,
-                  labelText: "Location",
-                  icon: Icons.location_on,
-                  validator: (value) =>
-                      value!.isEmpty ? "Please enter a location" : null,
+
+                // Mobile (prefilled +91)
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 14,
+                        horizontal: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text("+91"),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildTextField(
+                        controller: _mobileController,
+                        labelText: "Mobile Number",
+                        icon: Icons.phone,
+                        keyboardType: TextInputType.phone,
+                        validator: (value) => value!.isEmpty
+                            ? "Please enter mobile number"
+                            : null,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // Terms & Conditions text
+                Text(
+                  "By clicking on Register Free, you are agreeing to the Terms & Conditions",
+                  style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                  textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
-                _buildTextField(
-                  controller: _categoryController,
-                  labelText: "Category",
-                  icon: Icons.category,
-                  validator: (value) =>
-                      value!.isEmpty ? "Please enter a category" : null,
-                ),
-                const SizedBox(height: 16),
-                _buildTextField(
-                  controller: _descriptionController,
-                  labelText: "Description",
-                  icon: Icons.description,
-                  maxLines: 4,
-                ),
-                const SizedBox(height: 30),
+
                 _submitButton(),
               ],
             ),
@@ -178,20 +178,57 @@ class _matriSubmitScreenState extends State<MatriSubmitScreen> {
     String? Function(String?)? validator,
   }) {
     return Card(
-      elevation: 4,
+      elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
         child: TextFormField(
           controller: controller,
           keyboardType: keyboardType,
           maxLines: maxLines,
           decoration: InputDecoration(
             labelText: labelText,
-            prefixIcon: Icon(icon, color: Colors.blueAccent),
+            prefixIcon: Icon(icon, color: Colors.pinkAccent),
             border: InputBorder.none,
           ),
           validator: validator,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDropdown() {
+    final options = [
+      "Myself",
+      "Daughter",
+      "Son",
+      "Sister",
+      "Brother",
+      "Relative",
+      "Friend",
+    ];
+
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: DropdownButtonFormField<String>(
+          value: _selectedProfileFor,
+          decoration: const InputDecoration(
+            labelText: "Create Profile For",
+            border: InputBorder.none,
+            prefixIcon: Icon(Icons.group, color: Colors.pinkAccent),
+          ),
+          items: options
+              .map((item) => DropdownMenuItem(value: item, child: Text(item)))
+              .toList(),
+          onChanged: (value) {
+            setState(() => _selectedProfileFor = value);
+          },
+          validator: (value) => value == null
+              ? "Please select who you are creating profile for"
+              : null,
         ),
       ),
     );
@@ -202,20 +239,20 @@ class _matriSubmitScreenState extends State<MatriSubmitScreen> {
       width: double.infinity,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Colors.blue, Color(0xFF2196F3)],
+          colors: [Colors.pinkAccent, Colors.redAccent],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
-            color: const Color.fromARGB(255, 243, 33, 68).withOpacity(0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
+            color: Colors.pink.withOpacity(0.3),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
-      child: ElevatedButton.icon(
+      child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
@@ -224,10 +261,9 @@ class _matriSubmitScreenState extends State<MatriSubmitScreen> {
             borderRadius: BorderRadius.circular(30),
           ),
         ),
-        onPressed: _submitAd,
-        icon: const Icon(Icons.chat, color: Colors.white),
-        label: const Text(
-          "Submit via WhatsApp",
+        onPressed: _submitForm,
+        child: const Text(
+          "Register Free & Continue >>",
           style: TextStyle(
             color: Colors.white,
             fontSize: 18,

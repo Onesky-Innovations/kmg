@@ -3,18 +3,16 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:kmg/screens/admin/Add_Classified_FAB.dart';
 import 'package:url_launcher/url_launcher.dart';
-// import 'Add_Classified_FAB.dart';
+// Importing the separate theme file
+import 'package:kmg/theme/app_theme.dart';
 
 class AdDetailScreen extends StatelessWidget {
   final DocumentSnapshot adDoc;
   final bool isAdmin;
 
-  const AdDetailScreen({
-    super.key,
-    required this.adDoc,
-    this.isAdmin = false, // default false for normal users
-  });
+  const AdDetailScreen({super.key, required this.adDoc, this.isAdmin = false});
 
+  // --- Start of Logic-free Build Method ---
   @override
   Widget build(BuildContext context) {
     final ad = adDoc.data() as Map<String, dynamic>;
@@ -22,19 +20,36 @@ class AdDetailScreen extends StatelessWidget {
         ? (ad['expiryDate'] as Timestamp).toDate()
         : null;
 
-    // Skip banners for normal users
+    // Skip banners for normal users (Logic untouched)
     if (!isAdmin && ad['type'] == 'Banner') {
-      return const Scaffold(
-        body: Center(child: Text("This ad is not visible.")),
+      return Scaffold(
+        backgroundColor: AppTheme.background,
+        body: Center(
+          child: Text(
+            "This ad is not visible.",
+            style: TextStyle(fontSize: 18, color: Colors.grey.shade600),
+          ),
+        ),
       );
     }
 
     return Scaffold(
+      backgroundColor: Colors.grey.shade50, // Styled Background
       appBar: AppBar(
-        title: Text(ad['title'] ?? "Ad Details"),
+        // Styled AppBar
+        backgroundColor: AppTheme.primary,
+        foregroundColor: AppTheme.iconOnPrimary,
+        elevation: 4,
+        title: Text(
+          ad['title'] ?? "Ad Details",
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
+        ),
         actions: [
           if (isAdmin)
             PopupMenuButton<String>(
+              color: AppTheme.background,
+              elevation: 8,
+              // Logic untouched: onSelected handler for admin actions
               onSelected: (value) async {
                 if (value == 'edit') {
                   Navigator.push(
@@ -53,17 +68,38 @@ class AdDetailScreen extends StatelessWidget {
                   final confirm = await showDialog<bool>(
                     context: context,
                     builder: (ctx) => AlertDialog(
-                      title: const Text("Confirm Delete"),
+                      // Styled Delete Dialog
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      title: const Text(
+                        "Confirm Delete",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.red,
+                        ),
+                      ),
                       content: const Text(
                         "Are you sure you want to delete this ad?",
+                        style: TextStyle(fontSize: 16),
                       ),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(ctx, false),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.grey.shade600,
+                          ),
                           child: const Text("Cancel"),
                         ),
                         ElevatedButton(
                           onPressed: () => Navigator.pop(ctx, true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
                           child: const Text("Delete"),
                         ),
                       ],
@@ -78,122 +114,233 @@ class AdDetailScreen extends StatelessWidget {
                   }
                 }
               },
-              itemBuilder: (_) => const [
-                PopupMenuItem(value: "edit", child: Text("Edit")),
-                PopupMenuItem(value: "extend", child: Text("Extend")),
-                PopupMenuItem(value: "delete", child: Text("Delete")),
+              itemBuilder: (_) => [
+                const PopupMenuItem(
+                  value: "edit",
+                  child: Text(
+                    "Edit",
+                    style: TextStyle(color: AppTheme.primary),
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: "extend",
+                  child: Text(
+                    "Extend",
+                    style: TextStyle(color: AppTheme.primary),
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: "delete",
+                  child: Text("Delete", style: TextStyle(color: Colors.red)),
+                ),
               ],
             ),
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // User ID (top)
-            Text(
-              "User: ${ad['userId'] ?? '-'}",
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-
-            // Images
-            if (ad['images'] != null && (ad['images'] as List).isNotEmpty)
-              SizedBox(
-                height: 200,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: (ad['images'] as List)
-                      .map<Widget>(
-                        (imgUrl) => Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: Image.network(
-                            imgUrl,
-                            width: 200,
-                            height: 200,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      )
-                      .toList(),
+            // User ID (Stylized badge)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                "Posted by: ${ad['userId'] ?? 'Unknown User'}",
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.primary,
                 ),
               ),
-            const SizedBox(height: 12),
+            ),
+            const SizedBox(height: 20),
 
             // Title
             Text(
               ad['title'] ?? "-",
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+                color: Colors.black87,
+              ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
+
+            // Images (Rounded and with slight shadow)
+            if (ad['images'] != null && (ad['images'] as List).isNotEmpty)
+              Container(
+                height: 220,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.3),
+                      spreadRadius: 1,
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: (ad['images'] as List)
+                        .map<Widget>(
+                          (imgUrl) => Padding(
+                            padding: const EdgeInsets.only(right: 12),
+                            child: Image.network(
+                              imgUrl,
+                              width: 300,
+                              height: 220,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Container(
+                                    color: Colors.grey[200],
+                                    width: 300,
+                                    height: 220,
+                                    child: const Icon(
+                                      Icons.image_not_supported,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+              ),
 
             // Description
             Text(
-              ad['description'] ?? "-",
-              style: const TextStyle(fontSize: 16),
+              ad['description'] ?? "No description provided.",
+              style: TextStyle(
+                fontSize: 16,
+                height: 1.5,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Details Section Title
+            Text(
+              "Specifications",
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.primary.withOpacity(0.9),
+              ),
             ),
             const SizedBox(height: 12),
 
-            // Details
-            _buildDetailRow("Category", ad['category']),
-            _buildDetailRow("Place", ad['place']),
-            _buildDetailRow("Condition", ad['condition']),
+            // Details Rows (using custom styled helper)
+            _buildDetailRow(context, "Category", ad['category']),
+            _buildDetailRow(context, "Place", ad['place']),
+            _buildDetailRow(context, "Condition", ad['condition']),
             _buildDetailRow(
+              context,
               "Price",
               ad['price'] != null ? "₹${ad['price']}" : "Not specified",
+              isPrice: true,
             ),
 
             if (isAdmin)
               _buildDetailRow(
+                context,
                 "Duration (days)",
                 ad['durationDays']?.toString(),
               ),
-            if (isAdmin) _buildDetailRow("Status", ad['status']),
+            if (isAdmin) _buildDetailRow(context, "Status", ad['status']),
             if (expiryDate != null && isAdmin)
               _buildDetailRow(
+                context,
                 "Expiry Date",
                 DateFormat('yyyy-MM-dd').format(expiryDate),
+                isExpiry: true,
               ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 20),
 
             // Featured (only admin)
             if (isAdmin)
-              Row(
-                children: [
-                  const Text("Featured Ad: "),
-                  ad['isFeatured'] == true
-                      ? const Icon(Icons.check_circle, color: Colors.green)
-                      : const Icon(Icons.cancel, color: Colors.grey),
-                ],
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color:
+                      (ad['isFeatured'] == true
+                              ? Colors.green.shade50
+                              : Colors.grey.shade100)
+                          .withOpacity(0.8),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: ad['isFeatured'] == true
+                        ? Colors.green
+                        : Colors.grey.shade300,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      "Featured Ad Status: ",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: ad['isFeatured'] == true
+                            ? Colors.green.shade800
+                            : Colors.grey.shade600,
+                      ),
+                    ),
+                    ad['isFeatured'] == true
+                        ? const Icon(Icons.star, color: Colors.green, size: 20)
+                        : const Icon(
+                            Icons.star_border,
+                            color: Colors.grey,
+                            size: 20,
+                          ),
+                  ],
+                ),
               ),
+            const SizedBox(height: 30),
 
             // Call / Chat button (only user)
             if (!isAdmin && ad['contact'] != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 16),
+              Center(
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    ElevatedButton.icon(
+                    // Call Button (Gradient Styled)
+                    _buildGradientButton(
+                      context: context,
+                      label: "Call Now",
+                      icon: Icons.call,
                       onPressed: () {
-                        // Call phone
+                        // Logic untouched: launchUrl call
                         launchUrl(Uri.parse('tel:${ad['contact']}'));
                       },
-                      icon: const Icon(Icons.call),
-                      label: const Text("Call"),
                     ),
-                    const SizedBox(width: 12),
-                    ElevatedButton.icon(
+                    const SizedBox(width: 16),
+                    // Chat Button (Gradient Styled)
+                    _buildGradientButton(
+                      context: context,
+                      label: "Chat on WhatsApp",
+                      icon: Icons.chat,
                       onPressed: () {
-                        // WhatsApp / chat
+                        // Logic untouched: launchUrl call
                         launchUrl(
                           Uri.parse(
-                            'https://wa.me/${ad['contact']}?text=Hello',
+                            'https://wa.me/${ad['contact']}?text=Hello%20I%20saw%20your%20ad%20"${ad['title']}"%20on%20KMG.',
                           ),
                         );
                       },
-                      icon: const Icon(Icons.chat),
-                      label: const Text("Chat"),
                     ),
                   ],
                 ),
@@ -204,16 +351,102 @@ class AdDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailRow(String label, String? value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+  // Helper function to create a stylish gradient button
+  Widget _buildGradientButton({
+    required BuildContext context,
+    required String label,
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: AppTheme.primaryGradient, // Use theme gradient
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primary.withOpacity(0.5),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          // Make background transparent to show the container's gradient
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(30),
+          ),
+          foregroundColor: AppTheme.iconOnPrimary,
+          textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        icon: Icon(icon, color: AppTheme.iconOnPrimary),
+        label: Text(label),
+      ),
+    );
+  }
+
+  // Helper function to build a stylized detail row
+  Widget _buildDetailRow(
+    BuildContext context,
+    String label,
+    String? value, {
+    bool isPrice = false,
+    bool isExpiry = false,
+  }) {
+    Color valueColor = Colors.black87;
+    TextStyle valueStyle = const TextStyle(
+      fontSize: 16,
+      fontWeight: FontWeight.w500,
+    );
+
+    if (isPrice) {
+      valueColor = AppTheme.secondary; // Price highlighted with secondary color
+      valueStyle = valueStyle.copyWith(
+        fontWeight: FontWeight.w800,
+        fontSize: 18,
+      );
+    } else if (isExpiry) {
+      valueColor = Colors.red.shade700; // Expiry highlighted with red
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+      margin: const EdgeInsets.only(bottom: 6),
+      decoration: BoxDecoration(
+        color: AppTheme.background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("$label: ", style: const TextStyle(fontWeight: FontWeight.bold)),
+          SizedBox(
+            width: 120,
+            child: Text(
+              "$label:",
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+                fontSize: 16,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               value ?? "-",
-              style: const TextStyle(color: Colors.black87),
+              style: valueStyle.copyWith(color: valueColor),
             ),
           ),
         ],
@@ -221,6 +454,7 @@ class AdDetailScreen extends StatelessWidget {
     );
   }
 
+  // Original function for extending the ad (styles applied to dialog)
   void _showExtendDialog(
     BuildContext context,
     String adId,
@@ -231,22 +465,66 @@ class AdDetailScreen extends StatelessWidget {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setStateDialog) => AlertDialog(
-          title: Text("Extend ${ad['title']}"),
-          content: DropdownButton<int>(
-            value: extendDays,
-            items: [7, 15, 30]
-                .map((e) => DropdownMenuItem(value: e, child: Text("$e days")))
-                .toList(),
-            onChanged: (val) {
-              if (val != null) setStateDialog(() => extendDays = val);
-            },
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          title: Text(
+            "Extend ${ad['title']}",
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: AppTheme.primary,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Select duration to extend:",
+                style: TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  border: Border.all(color: AppTheme.primary),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<int>(
+                    value: extendDays,
+                    isExpanded: true,
+                    // Logic untouched: dropdown items map
+                    items: [7, 15, 30]
+                        .map(
+                          (e) => DropdownMenuItem(
+                            value: e,
+                            child: Text(
+                              "$e days",
+                              style: const TextStyle(color: Colors.black87),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    // Logic untouched: onChanged handler
+                    onChanged: (val) {
+                      if (val != null) setStateDialog(() => extendDays = val);
+                    },
+                  ),
+                ),
+              ),
+            ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.grey.shade600,
+              ),
               child: const Text("Cancel"),
             ),
             ElevatedButton(
+              // Logic untouched: onPressed handler for extension
               onPressed: () async {
                 final newExpiry = (ad["expiryDate"] as Timestamp).toDate().add(
                   Duration(days: extendDays),
@@ -258,6 +536,18 @@ class AdDetailScreen extends StatelessWidget {
                 if (!context.mounted) return;
                 Navigator.pop(ctx);
               },
+              // Styled button
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                foregroundColor: AppTheme.iconOnPrimary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
+              ),
               child: const Text("Extend"),
             ),
           ],
