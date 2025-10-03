@@ -55,7 +55,7 @@ class _CategoryChipsState extends State<CategoryChips> {
                   child: Icon(
                     category['icon'],
                     color: isSelected
-                        ? AppTheme.ActiveIconOnPrimary
+                        ? AppTheme.activeIconOnPrimary
                         : Colors.grey[700],
                     size: 30,
                   ),
@@ -65,7 +65,7 @@ class _CategoryChipsState extends State<CategoryChips> {
                   category['name'],
                   style: TextStyle(
                     color: isSelected
-                        ? AppTheme.ActiveIconOnPrimary
+                        ? AppTheme.activeIconOnPrimary
                         : Colors.grey[700],
                     fontSize: 12,
                     fontWeight: FontWeight.bold,

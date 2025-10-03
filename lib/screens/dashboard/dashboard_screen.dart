@@ -141,7 +141,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           onTabChangedListener: _onTabChanged,
           barBackgroundColor: Colors.transparent,
           circleColor: Colors.white,
-          activeIconColor: AppTheme.ActiveIconOnPrimary,
+          activeIconColor: AppTheme.activeIconOnPrimary,
           inactiveIconColor: Colors.white70,
           textColor: Colors.white,
           hasElevationShadows: true,

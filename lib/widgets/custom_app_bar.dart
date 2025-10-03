@@ -80,13 +80,18 @@ class _PlaceSelectorState extends State<PlaceSelector> {
         .collection('classifieds')
         .get();
 
+    if (!mounted) return; // ✅ Prevent setState after dispose
+
     final firestorePlaces = snapshot.docs
-        .map((doc) => (doc.data() as Map<String, dynamic>)['place'] as String?)
+        .map((doc) => (doc.data())['place'] as String?)
         .where((place) => place != null && place.isNotEmpty)
         .cast<String>()
         .toList();
 
+    if (!mounted) return; // double safety
+
     setState(() {
+      // ignore: prefer_collection_literals
       _allPlaces = LinkedHashSet<String>.from([
         ..._prefixPlaces,
         ...firestorePlaces,

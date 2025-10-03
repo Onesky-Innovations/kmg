@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
-// Importing the separate theme file (assumed to be available)
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import 'package:kmg/theme/app_theme.dart';
+import 'package:kmg/screens/ads/matri_detail_screen.dart';
+import 'package:kmg/screens/ads/matri_submit_screen.dart';
 
 class MatrimonyScreen extends StatefulWidget {
   const MatrimonyScreen({super.key});
@@ -10,255 +14,633 @@ class MatrimonyScreen extends StatefulWidget {
 }
 
 class _MatrimonyScreenState extends State<MatrimonyScreen> {
-  // --- LOGIC UNTOUCHED ---
-  void _onFabPressed() {
-    Navigator.pushNamed(context, "/matrimony");
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = "";
+  List<Map<String, dynamic>> _recentlyViewed = [];
+  List<Map<String, dynamic>> _viewedRecommended = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRecentlyViewed();
+    _loadViewedRecommended();
+    _searchController.addListener(_onSearchChanged);
   }
 
-  final List<Map<String, String>> sampleProfiles = [
-    {
-      "name": "Anita",
-      "age": "28",
-      "city": "Kochi",
-      "imageUrl":
-          "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=1888&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-    },
-    {
-      "name": "Ravi",
-      "age": "30",
-      "city": "Trivandrum",
-      "imageUrl":
-          "https://images.unsplash.com/photo-1507003211169-0a812d80f820?q=80&w=1887&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-    },
-    {
-      "name": "Meera",
-      "age": "25",
-      "city": "Ernakulam",
-      "imageUrl":
-          "https://images.unsplash.com/photo-1506794778202-dfa52e1e72f5?q=80&w=1887&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-    },
-    {
-      "name": "Arjun",
-      "age": "32",
-      "city": "Alappuzha",
-      "imageUrl":
-          "https://images.unsplash.com/photo-1599305445671-ac291c95aaa9?q=80&w=1902&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-    },
-  ];
-  // --- END LOGIC UNTOUCHED ---
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    setState(() {
+      _searchQuery = _searchController.text.toLowerCase();
+    });
+  }
+
+  // --------------------- Recently Viewed Logic ---------------------
+  Future<void> _loadRecentlyViewed() async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = prefs.getStringList("recentlyViewed") ?? [];
+    setState(() {
+      _recentlyViewed = data
+          .map((e) => Map<String, dynamic>.from(json.decode(e)))
+          .toList();
+    });
+  }
+
+  Future<void> _addToRecentlyViewed(Map<String, dynamic> profile) async {
+    final prefs = await SharedPreferences.getInstance();
+    _recentlyViewed.removeWhere((p) => p["id"] == profile["id"]);
+    _recentlyViewed.insert(0, profile);
+    if (_recentlyViewed.length > 5) {
+      _recentlyViewed = _recentlyViewed.sublist(0, 5);
+    }
+    await prefs.setStringList(
+      "recentlyViewed",
+      _recentlyViewed.map((p) => json.encode(p)).toList(),
+    );
+    setState(() {});
+  }
+
+  // --------------------- Viewed Recommended Logic ---------------------
+  Future<void> _loadViewedRecommended() async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = prefs.getStringList("viewedRecommended") ?? [];
+    final now = DateTime.now();
+    setState(() {
+      _viewedRecommended = data
+          .map((e) {
+            final map = Map<String, dynamic>.from(json.decode(e));
+            return {
+              "id": map["id"],
+              "viewedAt": map["viewedAt"] ?? now.toIso8601String(),
+            };
+          })
+          .where((p) {
+            final viewedAt = DateTime.tryParse(p["viewedAt"] ?? "") ?? now;
+            return now.difference(viewedAt).inDays <
+                4; // Keep only recent views
+          })
+          .toList();
+    });
+  }
+
+  Future<void> _addToViewedRecommended(String id) async {
+    final prefs = await SharedPreferences.getInstance();
+    final now = DateTime.now();
+    _viewedRecommended.removeWhere((p) => p["id"] == id);
+    _viewedRecommended.insert(0, {"id": id, "viewedAt": now.toIso8601String()});
+    await prefs.setStringList(
+      "viewedRecommended",
+      _viewedRecommended.map((p) => json.encode(p)).toList(),
+    );
+    setState(() {});
+  }
+
+  // --------------------- Utility ---------------------
+
+  /// Safely checks if a dynamic value is a string and a valid absolute URL.
+  bool _isValidImageUrl(dynamic url) {
+    if (url is! String || url.isEmpty) return false;
+    // Check if URI parsing is successful and it results in an absolute URI
+    return Uri.tryParse(url)?.isAbsolute ?? false;
+  }
+
+  Map<String, dynamic> _extractAndConvertProfileData(
+    Map<String, dynamic> rawData,
+    String docId,
+  ) {
+    return {
+      "id": docId,
+      "name": rawData["name"] ?? "",
+      "age": rawData["age"] ?? "",
+      "place": rawData["place"] ?? "",
+      "photo": rawData["photo"] ?? "",
+      "createdAt": (rawData["createdAt"] is Timestamp)
+          ? (rawData["createdAt"] as Timestamp).toDate().toIso8601String()
+          : (rawData["createdAt"] ?? ""),
+    };
+  }
+
+  void _navigateToDetail(String docId, Map<String, dynamic> profileData) {
+    final profile = _extractAndConvertProfileData(profileData, docId);
+    _addToRecentlyViewed(profile);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            MatriDetailScreen(profileId: docId, profile: profileData),
+      ),
+    );
+  }
+
+  // --------------------- UI Components ---------------------
+
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: TextField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          hintText: "Search by name, location...",
+          hintStyle: TextStyle(color: AppTheme.lightText.withOpacity(0.7)),
+          prefixIcon: const Icon(Icons.search, color: AppTheme.primaryColor),
+          suffixIcon: _searchController.text.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear, color: AppTheme.lightText),
+                  onPressed: () {
+                    _searchController.clear();
+                    _onSearchChanged();
+                  },
+                )
+              : null,
+          filled: true,
+          fillColor: AppTheme.cardBackground,
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 16,
+            horizontal: 16,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(30),
+            borderSide: BorderSide.none, // Hide default border
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(30),
+            borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(30),
+            borderSide: const BorderSide(
+              color: AppTheme.primaryColor,
+              width: 2,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionHeader(
+    String title, {
+    String? actionText,
+    VoidCallback? onActionPressed,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800, // Make it very bold
+              color: AppTheme.darkText,
+            ),
+          ),
+          if (actionText != null && onActionPressed != null)
+            TextButton(
+              onPressed: onActionPressed,
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.zero,
+                minimumSize: const Size(50, 20),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(
+                actionText,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppTheme.primaryColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _horizontalProfileTile(Map<String, dynamic> profile, String docId) {
+    // Used for Recently Viewed / Recommended sections
+    final photoUrl = profile["photo"];
+    final hasPhoto = _isValidImageUrl(photoUrl);
+
+    return GestureDetector(
+      onTap: () => _navigateToDetail(docId, profile),
+      child: Container(
+        width: 100, // Slightly wider tile
+        margin: const EdgeInsets.only(left: 16, right: 4),
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: AppTheme.cardBackground,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              spreadRadius: 1,
+              blurRadius: 3,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppTheme.primaryColor.withOpacity(0.4),
+                  width: 2,
+                ),
+              ),
+              child: CircleAvatar(
+                radius: 30,
+                backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                backgroundImage: hasPhoto
+                    ? NetworkImage(photoUrl as String)
+                    : null,
+                child: !hasPhoto
+                    ? const Icon(
+                        Icons.person_4,
+                        size: 30,
+                        color: AppTheme.primaryColor,
+                      )
+                    : null,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              profile["name"] ?? "N/A",
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.darkText,
+              ),
+            ),
+            Text(
+              "${profile["age"] ?? 'N/A'} | ${profile["place"] ?? 'N/A'}",
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 10,
+                color: AppTheme.lightText.withOpacity(0.8),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGridProfileCard(Map<String, dynamic> data, String docId) {
+    // Used for the main list of profiles (GridView)
+    final photoUrl = data["photo"];
+    final hasPhoto = _isValidImageUrl(photoUrl);
+
+    return GestureDetector(
+      onTap: () => _navigateToDetail(docId, data),
+      child: Card(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 6, // Higher elevation for prominence
+        color: AppTheme.cardBackground,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
+                child: hasPhoto
+                    ? Image.network(
+                        photoUrl
+                            as String, // Safe cast because _isValidImageUrl checked the type
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            const Center(
+                              child: Icon(
+                                Icons.person_off_rounded,
+                                size: 40,
+                                color: AppTheme.lightText,
+                              ),
+                            ),
+                      )
+                    : Container(
+                        color: AppTheme.primaryColor.withOpacity(0.1),
+                        child: const Center(
+                          child: Icon(
+                            Icons.person_4_outlined,
+                            size: 60,
+                            color: AppTheme.primaryColor,
+                          ),
+                        ),
+                      ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    data["name"] ?? "Unknown",
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: AppTheme.darkText,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.cake_outlined,
+                        size: 14,
+                        color: AppTheme.lightText,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        "${data["age"] ?? 'N/A'} years",
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.lightText,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.location_on_outlined,
+                        size: 14,
+                        color: AppTheme.lightText,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          data["place"] ?? "Location N/A",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.lightText,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --------------------- Sections Builders ---------------------
+
+  Widget _buildRecentlyViewed() {
+    if (_recentlyViewed.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionHeader(
+          "Recently Viewed",
+          actionText: "View All",
+          onActionPressed: () {
+            // Placeholder for navigation to a full list of recently viewed
+          },
+        ),
+        const SizedBox(height: 4),
+        SizedBox(
+          height: 125, // Adjusted height for slightly taller tiles
+          child: ListView.builder(
+            padding: const EdgeInsets.only(
+              right: 16,
+            ), // Ensures padding on the right edge
+            scrollDirection: Axis.horizontal,
+            itemCount: _recentlyViewed.length,
+            itemBuilder: (context, index) {
+              final profile = _recentlyViewed[index];
+              return _horizontalProfileTile(
+                profile,
+                profile["id"] ?? "unknown",
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRecommendations(List<QueryDocumentSnapshot> allProfiles) {
+    final now = DateTime.now();
+    final recommendedProfiles = allProfiles
+        .where((doc) {
+          final id = doc.id;
+          final viewed = _viewedRecommended.any((v) {
+            final viewedAt = DateTime.tryParse(v["viewedAt"] ?? "") ?? now;
+            return v["id"] == id && now.difference(viewedAt).inDays < 4;
+          });
+          return !viewed;
+        })
+        .take(5) // Limit the number of recommendations
+        .toList();
+
+    if (recommendedProfiles.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionHeader(
+          "Recommended for You",
+          actionText: "More",
+          onActionPressed: () {
+            // Placeholder for navigation to a full list of recommendations
+          },
+        ),
+        const SizedBox(height: 4),
+        SizedBox(
+          height: 125, // Adjusted height for slightly taller tiles
+          child: ListView.builder(
+            padding: const EdgeInsets.only(
+              right: 16,
+            ), // Ensures padding on the right edge
+            scrollDirection: Axis.horizontal,
+            itemCount: recommendedProfiles.length,
+            itemBuilder: (context, index) {
+              final doc = recommendedProfiles[index];
+              return _horizontalProfileTile(
+                doc.data() as Map<String, dynamic>,
+                doc.id,
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  // --------------------- Main Build ---------------------
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.background, // Light background for contrast
-
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Banner / Intro - STYLED WITH GRADIENT
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: const BoxDecoration(
-                gradient: AppTheme.primaryGradient, // Use AppTheme Gradient
-                borderRadius: BorderRadius.vertical(
-                  bottom: Radius.circular(24),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 10,
-                    offset: Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    "Find your soul mate",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 28, // Increased font size
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    "We help you find your perfect partner & perfect family",
-                    style: TextStyle(color: Colors.white70, fontSize: 16),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Search bar - STYLED
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: TextField(
-                decoration: InputDecoration(
-                  hintText: "Search by name, city, age…",
-                  prefixIcon: const Icon(
-                    Icons.search,
-                    color: AppTheme.primary, // Primary color icon
-                  ),
-                  filled: true,
-                  fillColor: AppTheme.background, // Use theme background color
-                  contentPadding: const EdgeInsets.symmetric(
-                    vertical: 16, // Increased vertical padding
-                    horizontal: 16,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(30),
-                    borderSide: BorderSide(
-                      color: Colors.grey.shade300,
-                      width: 1.0,
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(30),
-                    borderSide: BorderSide(color: Colors.grey.shade200),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(30),
-                    borderSide: const BorderSide(
-                      color: AppTheme.primary, // Primary color focus highlight
-                      width: 2.0,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Section title
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  "Recommended Profiles",
-                  style: TextStyle(
-                    fontSize: 20, // Increased font size
-                    fontWeight: FontWeight.w900,
-                    color: Colors.black87,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Horizontal list of profiles
-            SizedBox(
-              height: 250, // Increased height for better card size
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: sampleProfiles.length,
-                itemBuilder: (context, index) {
-                  return _profileCard(sampleProfiles[index]);
-                },
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // More features placeholder
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                "More features coming soon…",
-                style: TextStyle(color: Colors.grey[500], fontSize: 16),
-              ),
-            ),
-            const SizedBox(height: 80), // To avoid FAB overlay
-          ],
+      appBar: AppBar(
+        title: const Text(
+          "Matrimony Profiles",
+          style: TextStyle(
+            color: AppTheme.iconOnPrimary,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-      ),
-
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _onFabPressed, // Logic untouched
-        backgroundColor:
-            AppTheme.secondary, // Use AppTheme Secondary color for FAB
-        foregroundColor: AppTheme.iconOnPrimary, // White text/icon
-        icon: const Icon(Icons.person_add_alt_1),
-        label: const Text(
-          "Add Profile",
-          style: TextStyle(fontWeight: FontWeight.bold),
+        flexibleSpace: Container(
+          // Subtle gradient for a premium feel
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                AppTheme.primaryColor,
+                AppTheme.primaryColor.withOpacity(0.8),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
         ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+        elevation: 4, // Add elevation for depth
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-    );
-  }
-
-  // Helper function for profile cards - STYLED
-  Widget _profileCard(Map<String, String> prof) {
-    return Container(
-      width: 160, // Increased width
-      margin: const EdgeInsets.only(right: 16),
-      child: Card(
-        color: AppTheme.background,
-        elevation: 6, // Higher elevation for depth
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 8.0),
+      backgroundColor: AppTheme.background,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(16),
-                ),
-                child: Image.network(
-                  prof["imageUrl"]!,
-                  height: 120, // Increased image height
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  // Error handling for image loading
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    color: Colors.grey.shade200,
-                    height: 120,
-                    width: double.infinity,
-                    child: const Icon(
-                      Icons.person_outline,
-                      color: Colors.grey,
-                      size: 40,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                prof["name"]!,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800, // Bold name
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                "${prof["age"]} yrs, ${prof["city"]}",
-                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-              ),
-              const Spacer(),
-              ElevatedButton(
-                onPressed: () {}, // Logic untouched
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primary, // Primary color button
-                  foregroundColor: AppTheme.iconOnPrimary, // White text
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(25),
-                  ),
-                  elevation: 4,
-                  minimumSize: const Size(120, 36), // Increased size
-                ),
-                child: const Text("View Profile"),
+              _buildSearchBar(),
+              _buildRecentlyViewed(),
+              StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('matrimony')
+                    .orderBy("createdAt", descending: true)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Padding(
+                      padding: EdgeInsets.all(32),
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: AppTheme.primaryColor,
+                        ),
+                      ),
+                    );
+                  }
+
+                  if (snapshot.hasError) {
+                    return Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(
+                        "Error loading profiles: ${snapshot.error}",
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: AppTheme.darkText),
+                      ),
+                    );
+                  }
+
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Center(
+                        child: Text(
+                          "No profiles available at the moment.",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: AppTheme.lightText,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+
+                  final allProfiles = snapshot.data!.docs;
+                  final filteredProfiles = allProfiles.where((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    final name = (data["name"] ?? "").toLowerCase();
+                    final place = (data["place"] ?? "").toLowerCase();
+                    return name.contains(_searchQuery) ||
+                        place.contains(_searchQuery);
+                  }).toList();
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (_searchQuery.isEmpty)
+                        _buildRecommendations(allProfiles),
+
+                      _sectionHeader(
+                        _searchQuery.isEmpty
+                            ? "All Profiles"
+                            : "Search Results (${filteredProfiles.length})",
+                      ),
+
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: filteredProfiles.length,
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                childAspectRatio:
+                                    0.75, // Better aspect ratio for photo and text
+                                mainAxisSpacing: 16,
+                                crossAxisSpacing: 16,
+                              ),
+                          itemBuilder: (context, index) {
+                            final doc = filteredProfiles[index];
+                            final data = doc.data() as Map<String, dynamic>;
+                            return _buildGridProfileCard(data, doc.id);
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 100), // Space for FAB
+                    ],
+                  );
+                },
               ),
             ],
           ),
         ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const MatriSubmitScreen()),
+          );
+        },
+        label: const Text(
+          "Add Profile",
+          style: TextStyle(
+            color: AppTheme.iconOnPrimary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        icon: const Icon(Icons.person_add_alt_1, color: AppTheme.iconOnPrimary),
+        backgroundColor: AppTheme.primaryColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
       ),
     );
   }
