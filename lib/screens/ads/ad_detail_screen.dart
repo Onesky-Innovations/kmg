@@ -1,9 +1,567 @@
+// import 'package:flutter/material.dart';
+// import 'package:cloud_firestore/cloud_firestore.dart';
+// import 'package:intl/intl.dart';
+// import 'package:kmg/screens/admin/Add_Classified_FAB.dart';
+// import 'package:url_launcher/url_launcher.dart';
+// // Importing the separate theme file
+// import 'package:kmg/theme/app_theme.dart';
+
+// class AdDetailScreen extends StatelessWidget {
+//   final DocumentSnapshot adDoc;
+//   final bool isAdmin;
+
+//   const AdDetailScreen({super.key, required this.adDoc, this.isAdmin = false});
+
+//   // --- Start of Logic-free Build Method ---
+//   @override
+//   Widget build(BuildContext context) {
+//     final ad = adDoc.data() as Map<String, dynamic>;
+//     final expiryDate = ad['expiryDate'] != null
+//         ? (ad['expiryDate'] as Timestamp).toDate()
+//         : null;
+
+//     // Skip banners for normal users (Logic untouched)
+//     if (!isAdmin && ad['type'] == 'Banner') {
+//       return Scaffold(
+//         backgroundColor: AppTheme.background,
+//         body: Center(
+//           child: Text(
+//             "This ad is not visible.",
+//             style: TextStyle(fontSize: 18, color: Colors.grey.shade600),
+//           ),
+//         ),
+//       );
+//     }
+
+//     return Scaffold(
+//       backgroundColor: Colors.grey.shade50, // Styled Background
+//       appBar: AppBar(
+//         // Styled AppBar
+//         backgroundColor: AppTheme.primary,
+//         foregroundColor: AppTheme.iconOnPrimary,
+//         elevation: 4,
+//         title: Text(
+//           ad['title'] ?? "Ad Details",
+//           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
+//         ),
+//         actions: [
+//           if (isAdmin)
+//             PopupMenuButton<String>(
+//               color: AppTheme.background,
+//               elevation: 8,
+//               // Logic untouched: onSelected handler for admin actions
+//               onSelected: (value) async {
+//                 if (value == 'edit') {
+//                   Navigator.push(
+//                     context,
+//                     MaterialPageRoute(
+//                       builder: (_) => AddClassifiedFAB(
+//                         type: ad['type'],
+//                         userId: ad['userId'],
+//                         adId: adDoc.id,
+//                       ),
+//                     ),
+//                   );
+//                 } else if (value == 'extend') {
+//                   _showExtendDialog(context, adDoc.id, ad);
+//                 } else if (value == 'delete') {
+//                   final confirm = await showDialog<bool>(
+//                     context: context,
+//                     builder: (ctx) => AlertDialog(
+//                       // Styled Delete Dialog
+//                       shape: RoundedRectangleBorder(
+//                         borderRadius: BorderRadius.circular(15),
+//                       ),
+//                       title: const Text(
+//                         "Confirm Delete",
+//                         style: TextStyle(
+//                           fontWeight: FontWeight.bold,
+//                           color: Colors.red,
+//                         ),
+//                       ),
+//                       content: const Text(
+//                         "Are you sure you want to delete this ad?",
+//                         style: TextStyle(fontSize: 16),
+//                       ),
+//                       actions: [
+//                         TextButton(
+//                           onPressed: () => Navigator.pop(ctx, false),
+//                           style: TextButton.styleFrom(
+//                             foregroundColor: Colors.grey.shade600,
+//                           ),
+//                           child: const Text("Cancel"),
+//                         ),
+//                         ElevatedButton(
+//                           onPressed: () => Navigator.pop(ctx, true),
+//                           style: ElevatedButton.styleFrom(
+//                             backgroundColor: Colors.red,
+//                             foregroundColor: Colors.white,
+//                             shape: RoundedRectangleBorder(
+//                               borderRadius: BorderRadius.circular(8),
+//                             ),
+//                           ),
+//                           child: const Text("Delete"),
+//                         ),
+//                       ],
+//                     ),
+//                   );
+//                   if (confirm == true) {
+//                     await FirebaseFirestore.instance
+//                         .collection("classifieds")
+//                         .doc(adDoc.id)
+//                         .delete();
+//                     if (context.mounted) Navigator.pop(context);
+//                   }
+//                 }
+//               },
+//               itemBuilder: (_) => [
+//                 const PopupMenuItem(
+//                   value: "edit",
+//                   child: Text(
+//                     "Edit",
+//                     style: TextStyle(color: AppTheme.primary),
+//                   ),
+//                 ),
+//                 const PopupMenuItem(
+//                   value: "extend",
+//                   child: Text(
+//                     "Extend",
+//                     style: TextStyle(color: AppTheme.primary),
+//                   ),
+//                 ),
+//                 const PopupMenuItem(
+//                   value: "delete",
+//                   child: Text("Delete", style: TextStyle(color: Colors.red)),
+//                 ),
+//               ],
+//             ),
+//         ],
+//       ),
+//       body: SingleChildScrollView(
+//         padding: const EdgeInsets.all(20),
+//         child: Column(
+//           crossAxisAlignment: CrossAxisAlignment.start,
+//           children: [
+//             // User ID (Stylized badge)
+//             Container(
+//               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+//               decoration: BoxDecoration(
+//                 color: AppTheme.primary.withOpacity(0.1),
+//                 borderRadius: BorderRadius.circular(20),
+//               ),
+//               child: Text(
+//                 "Posted by: ${ad['userId'] ?? 'Unknown User'}",
+//                 style: const TextStyle(
+//                   fontSize: 14,
+//                   fontWeight: FontWeight.w600,
+//                   color: AppTheme.primary,
+//                 ),
+//               ),
+//             ),
+//             const SizedBox(height: 20),
+
+//             // Title
+//             Text(
+//               ad['title'] ?? "-",
+//               style: const TextStyle(
+//                 fontSize: 28,
+//                 fontWeight: FontWeight.w800,
+//                 color: Colors.black87,
+//               ),
+//             ),
+//             const SizedBox(height: 16),
+
+//             // Images (Rounded and with slight shadow)
+//             if (ad['images'] != null && (ad['images'] as List).isNotEmpty)
+//               Container(
+//                 height: 220,
+//                 margin: const EdgeInsets.only(bottom: 20),
+//                 decoration: BoxDecoration(
+//                   borderRadius: BorderRadius.circular(16),
+//                   boxShadow: [
+//                     BoxShadow(
+//                       color: Colors.grey.withOpacity(0.3),
+//                       spreadRadius: 1,
+//                       blurRadius: 10,
+//                       offset: const Offset(0, 4),
+//                     ),
+//                   ],
+//                 ),
+//                 child: ClipRRect(
+//                   borderRadius: BorderRadius.circular(16),
+//                   child: ListView(
+//                     scrollDirection: Axis.horizontal,
+//                     children: (ad['images'] as List)
+//                         .map<Widget>(
+//                           (imgUrl) => Padding(
+//                             padding: const EdgeInsets.only(right: 12),
+//                             child: Image.network(
+//                               imgUrl,
+//                               width: 300,
+//                               height: 220,
+//                               fit: BoxFit.cover,
+//                               errorBuilder: (context, error, stackTrace) =>
+//                                   Container(
+//                                     color: Colors.grey[200],
+//                                     width: 300,
+//                                     height: 220,
+//                                     child: const Icon(
+//                                       Icons.image_not_supported,
+//                                       color: Colors.grey,
+//                                     ),
+//                                   ),
+//                             ),
+//                           ),
+//                         )
+//                         .toList(),
+//                   ),
+//                 ),
+//               ),
+
+//             // Description
+//             Text(
+//               ad['description'] ?? "No description provided.",
+//               style: TextStyle(
+//                 fontSize: 16,
+//                 height: 1.5,
+//                 color: Colors.grey[700],
+//               ),
+//             ),
+//             const SizedBox(height: 24),
+
+//             // Details Section Title
+//             Text(
+//               "Specifications",
+//               style: TextStyle(
+//                 fontSize: 20,
+//                 fontWeight: FontWeight.bold,
+//                 color: AppTheme.primary.withOpacity(0.9),
+//               ),
+//             ),
+//             const SizedBox(height: 12),
+
+//             // Details Rows (using custom styled helper)
+//             _buildDetailRow(context, "Category", ad['category']),
+//             _buildDetailRow(context, "Place", ad['place']),
+//             _buildDetailRow(context, "Condition", ad['condition']),
+//             _buildDetailRow(
+//               context,
+//               "Price",
+//               ad['price'] != null ? "₹${ad['price']}" : "Not specified",
+//               isPrice: true,
+//             ),
+
+//             if (isAdmin)
+//               _buildDetailRow(
+//                 context,
+//                 "Duration (days)",
+//                 ad['durationDays']?.toString(),
+//               ),
+//             if (isAdmin) _buildDetailRow(context, "Status", ad['status']),
+//             if (expiryDate != null && isAdmin)
+//               _buildDetailRow(
+//                 context,
+//                 "Expiry Date",
+//                 DateFormat('yyyy-MM-dd').format(expiryDate),
+//                 isExpiry: true,
+//               ),
+//             const SizedBox(height: 20),
+
+//             // Featured (only admin)
+//             if (isAdmin)
+//               Container(
+//                 padding: const EdgeInsets.symmetric(
+//                   horizontal: 16,
+//                   vertical: 10,
+//                 ),
+//                 decoration: BoxDecoration(
+//                   color:
+//                       (ad['isFeatured'] == true
+//                               ? Colors.green.shade50
+//                               : Colors.grey.shade100)
+//                           .withOpacity(0.8),
+//                   borderRadius: BorderRadius.circular(10),
+//                   border: Border.all(
+//                     color: ad['isFeatured'] == true
+//                         ? Colors.green
+//                         : Colors.grey.shade300,
+//                   ),
+//                 ),
+//                 child: Row(
+//                   mainAxisSize: MainAxisSize.min,
+//                   children: [
+//                     Text(
+//                       "Featured Ad Status: ",
+//                       style: TextStyle(
+//                         fontWeight: FontWeight.bold,
+//                         color: ad['isFeatured'] == true
+//                             ? Colors.green.shade800
+//                             : Colors.grey.shade600,
+//                       ),
+//                     ),
+//                     ad['isFeatured'] == true
+//                         ? const Icon(Icons.star, color: Colors.green, size: 20)
+//                         : const Icon(
+//                             Icons.star_border,
+//                             color: Colors.grey,
+//                             size: 20,
+//                           ),
+//                   ],
+//                 ),
+//               ),
+//             const SizedBox(height: 30),
+
+//             // Call / Chat button (only user)
+//             if (!isAdmin && ad['contact'] != null)
+//               Center(
+//                 child: Row(
+//                   mainAxisSize: MainAxisSize.min,
+//                   children: [
+//                     // Call Button (Gradient Styled)
+//                     _buildGradientButton(
+//                       context: context,
+//                       label: "Call Now",
+//                       icon: Icons.call,
+//                       onPressed: () {
+//                         // Logic untouched: launchUrl call
+//                         launchUrl(Uri.parse('tel:${ad['contact']}'));
+//                       },
+//                     ),
+//                     const SizedBox(width: 16),
+//                     // Chat Button (Gradient Styled)
+//                     _buildGradientButton(
+//                       context: context,
+//                       label: "Chat on WhatsApp",
+//                       icon: Icons.chat,
+//                       onPressed: () {
+//                         // Logic untouched: launchUrl call
+//                         launchUrl(
+//                           Uri.parse(
+//                             'https://wa.me/${ad['contact']}?text=Hello%20I%20saw%20your%20ad%20"${ad['title']}"%20on%20KMG.',
+//                           ),
+//                         );
+//                       },
+//                     ),
+//                   ],
+//                 ),
+//               ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+
+//   // Helper function to create a stylish gradient button
+//   Widget _buildGradientButton({
+//     required BuildContext context,
+//     required String label,
+//     required IconData icon,
+//     required VoidCallback onPressed,
+//   }) {
+//     return Container(
+//       decoration: BoxDecoration(
+//         gradient: AppTheme.primaryGradient, // Use theme gradient
+//         borderRadius: BorderRadius.circular(30),
+//         boxShadow: [
+//           BoxShadow(
+//             color: AppTheme.primary.withOpacity(0.5),
+//             blurRadius: 10,
+//             offset: const Offset(0, 5),
+//           ),
+//         ],
+//       ),
+//       child: ElevatedButton.icon(
+//         onPressed: onPressed,
+//         style: ElevatedButton.styleFrom(
+//           // Make background transparent to show the container's gradient
+//           backgroundColor: Colors.transparent,
+//           shadowColor: Colors.transparent,
+//           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+//           shape: RoundedRectangleBorder(
+//             borderRadius: BorderRadius.circular(30),
+//           ),
+//           foregroundColor: AppTheme.iconOnPrimary,
+//           textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+//         ),
+//         icon: Icon(icon, color: AppTheme.iconOnPrimary),
+//         label: Text(label),
+//       ),
+//     );
+//   }
+
+//   // Helper function to build a stylized detail row
+//   Widget _buildDetailRow(
+//     BuildContext context,
+//     String label,
+//     String? value, {
+//     bool isPrice = false,
+//     bool isExpiry = false,
+//   }) {
+//     Color valueColor = Colors.black87;
+//     TextStyle valueStyle = const TextStyle(
+//       fontSize: 16,
+//       fontWeight: FontWeight.w500,
+//     );
+
+//     if (isPrice) {
+//       valueColor = AppTheme.secondary; // Price highlighted with secondary color
+//       valueStyle = valueStyle.copyWith(
+//         fontWeight: FontWeight.w800,
+//         fontSize: 18,
+//       );
+//     } else if (isExpiry) {
+//       valueColor = Colors.red.shade700; // Expiry highlighted with red
+//     }
+
+//     return Container(
+//       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+//       margin: const EdgeInsets.only(bottom: 6),
+//       decoration: BoxDecoration(
+//         color: AppTheme.background,
+//         borderRadius: BorderRadius.circular(12),
+//         border: Border.all(color: Colors.grey.shade200),
+//         boxShadow: [
+//           BoxShadow(
+//             color: Colors.grey.withOpacity(0.05),
+//             blurRadius: 4,
+//             offset: const Offset(0, 2),
+//           ),
+//         ],
+//       ),
+//       child: Row(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           SizedBox(
+//             width: 120,
+//             child: Text(
+//               "$label:",
+//               style: const TextStyle(
+//                 fontWeight: FontWeight.w600,
+//                 color: Colors.black,
+//                 fontSize: 16,
+//               ),
+//             ),
+//           ),
+//           const SizedBox(width: 12),
+//           Expanded(
+//             child: Text(
+//               value ?? "-",
+//               style: valueStyle.copyWith(color: valueColor),
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+
+//   // Original function for extending the ad (styles applied to dialog)
+//   void _showExtendDialog(
+//     BuildContext context,
+//     String adId,
+//     Map<String, dynamic> ad,
+//   ) {
+//     int extendDays = 7;
+//     showDialog(
+//       context: context,
+//       builder: (ctx) => StatefulBuilder(
+//         builder: (ctx, setStateDialog) => AlertDialog(
+//           shape: RoundedRectangleBorder(
+//             borderRadius: BorderRadius.circular(15),
+//           ),
+//           title: Text(
+//             "Extend ${ad['title']}",
+//             style: const TextStyle(
+//               fontWeight: FontWeight.bold,
+//               color: AppTheme.primary,
+//             ),
+//           ),
+//           content: Column(
+//             mainAxisSize: MainAxisSize.min,
+//             crossAxisAlignment: CrossAxisAlignment.start,
+//             children: [
+//               const Text(
+//                 "Select duration to extend:",
+//                 style: TextStyle(fontSize: 16),
+//               ),
+//               const SizedBox(height: 10),
+//               Container(
+//                 padding: const EdgeInsets.symmetric(horizontal: 10),
+//                 decoration: BoxDecoration(
+//                   border: Border.all(color: AppTheme.primary),
+//                   borderRadius: BorderRadius.circular(8),
+//                 ),
+//                 child: DropdownButtonHideUnderline(
+//                   child: DropdownButton<int>(
+//                     value: extendDays,
+//                     isExpanded: true,
+//                     // Logic untouched: dropdown items map
+//                     items: [7, 15, 30]
+//                         .map(
+//                           (e) => DropdownMenuItem(
+//                             value: e,
+//                             child: Text(
+//                               "$e days",
+//                               style: const TextStyle(color: Colors.black87),
+//                             ),
+//                           ),
+//                         )
+//                         .toList(),
+//                     // Logic untouched: onChanged handler
+//                     onChanged: (val) {
+//                       if (val != null) setStateDialog(() => extendDays = val);
+//                     },
+//                   ),
+//                 ),
+//               ),
+//             ],
+//           ),
+//           actions: [
+//             TextButton(
+//               onPressed: () => Navigator.pop(ctx),
+//               style: TextButton.styleFrom(
+//                 foregroundColor: Colors.grey.shade600,
+//               ),
+//               child: const Text("Cancel"),
+//             ),
+//             ElevatedButton(
+//               // Logic untouched: onPressed handler for extension
+//               onPressed: () async {
+//                 final newExpiry = (ad["expiryDate"] as Timestamp).toDate().add(
+//                   Duration(days: extendDays),
+//                 );
+//                 await FirebaseFirestore.instance
+//                     .collection("classifieds")
+//                     .doc(adId)
+//                     .update({"expiryDate": newExpiry});
+//                 if (!context.mounted) return;
+//                 Navigator.pop(ctx);
+//               },
+//               // Styled button
+//               style: ElevatedButton.styleFrom(
+//                 backgroundColor: AppTheme.primary,
+//                 foregroundColor: AppTheme.iconOnPrimary,
+//                 shape: RoundedRectangleBorder(
+//                   borderRadius: BorderRadius.circular(10),
+//                 ),
+//                 padding: const EdgeInsets.symmetric(
+//                   horizontal: 20,
+//                   vertical: 10,
+//                 ),
+//               ),
+//               child: const Text("Extend"),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:kmg/screens/admin/Add_Classified_FAB.dart';
 import 'package:url_launcher/url_launcher.dart';
-// Importing the separate theme file
 import 'package:kmg/theme/app_theme.dart';
 
 class AdDetailScreen extends StatelessWidget {
@@ -12,16 +570,15 @@ class AdDetailScreen extends StatelessWidget {
 
   const AdDetailScreen({super.key, required this.adDoc, this.isAdmin = false});
 
-  // --- Start of Logic-free Build Method ---
   @override
   Widget build(BuildContext context) {
-    final ad = adDoc.data() as Map<String, dynamic>;
+    final ad = adDoc.data() as Map<String, dynamic>? ?? {};
     final expiryDate = ad['expiryDate'] != null
         ? (ad['expiryDate'] as Timestamp).toDate()
         : null;
 
-    // Skip banners for normal users (Logic untouched)
-    if (!isAdmin && ad['type'] == 'Banner') {
+    // Skip banners for normal users
+    if (!isAdmin && (ad['type'] ?? '') == 'Banner') {
       return Scaffold(
         backgroundColor: AppTheme.background,
         body: Center(
@@ -33,15 +590,29 @@ class AdDetailScreen extends StatelessWidget {
       );
     }
 
+    final userId = ad['userId']?.toString() ?? 'Unknown User';
+    final title = ad['title']?.toString() ?? 'Ad Details';
+    final category = ad['category']?.toString();
+    final place = ad['place']?.toString();
+    final condition = ad['condition']?.toString();
+    final price = ad['price'] != null ? "₹${ad['price']}" : "Not specified";
+    final images = List<String>.from(ad['images'] ?? []);
+    final status = ad['status']?.toString() ?? '-';
+    final type = ad['type']?.toString() ?? 'Unknown';
+    final isFeatured = ad['isFeatured'] == true;
+    final durationDays = ad['durationDays']?.toString() ?? '30';
+    final description =
+        ad['description']?.toString() ?? 'No description provided.';
+    final contact = ad['contact']?.toString();
+
     return Scaffold(
-      backgroundColor: Colors.grey.shade50, // Styled Background
+      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        // Styled AppBar
         backgroundColor: AppTheme.primary,
         foregroundColor: AppTheme.iconOnPrimary,
         elevation: 4,
         title: Text(
-          ad['title'] ?? "Ad Details",
+          title,
           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
         ),
         actions: [
@@ -49,15 +620,14 @@ class AdDetailScreen extends StatelessWidget {
             PopupMenuButton<String>(
               color: AppTheme.background,
               elevation: 8,
-              // Logic untouched: onSelected handler for admin actions
               onSelected: (value) async {
                 if (value == 'edit') {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (_) => AddClassifiedFAB(
-                        type: ad['type'],
-                        userId: ad['userId'],
+                        type: type,
+                        userId: userId,
                         adId: adDoc.id,
                       ),
                     ),
@@ -68,7 +638,6 @@ class AdDetailScreen extends StatelessWidget {
                   final confirm = await showDialog<bool>(
                     context: context,
                     builder: (ctx) => AlertDialog(
-                      // Styled Delete Dialog
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(15),
                       ),
@@ -142,7 +711,6 @@ class AdDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // User ID (Stylized badge)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
@@ -150,7 +718,7 @@ class AdDetailScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                "Posted by: ${ad['userId'] ?? 'Unknown User'}",
+                "Posted by: $userId",
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -159,10 +727,8 @@ class AdDetailScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-
-            // Title
             Text(
-              ad['title'] ?? "-",
+              title,
               style: const TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.w800,
@@ -170,57 +736,51 @@ class AdDetailScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-
-            // Images (Rounded and with slight shadow)
-            if (ad['images'] != null && (ad['images'] as List).isNotEmpty)
+            if (images.isNotEmpty)
               Container(
                 height: 220,
                 margin: const EdgeInsets.only(bottom: 20),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.3),
-                      spreadRadius: 1,
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+                  // boxShadow: [
+                  //   BoxShadow(
+                  //     color: Colors.grey.withOpacity(0.3),
+                  //     spreadRadius: 1,
+                  //     blurRadius: 10,
+                  //     offset: const Offset(0, 4),
+                  //   ),
+                  // ],
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(16),
                   child: ListView(
                     scrollDirection: Axis.horizontal,
-                    children: (ad['images'] as List)
-                        .map<Widget>(
-                          (imgUrl) => Padding(
-                            padding: const EdgeInsets.only(right: 12),
-                            child: Image.network(
-                              imgUrl,
-                              width: 300,
-                              height: 220,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  Container(
-                                    color: Colors.grey[200],
-                                    width: 300,
-                                    height: 220,
-                                    child: const Icon(
-                                      Icons.image_not_supported,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                            ),
-                          ),
-                        )
-                        .toList(),
+                    children: images.map((imgUrl) {
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: Image.network(
+                          imgUrl,
+                          width: 300,
+                          height: 220,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
+                                color: Colors.grey[200],
+                                width: 300,
+                                height: 220,
+                                child: const Icon(
+                                  Icons.image_not_supported,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                        ),
+                      );
+                    }).toList(),
                   ),
                 ),
               ),
-
-            // Description
             Text(
-              ad['description'] ?? "No description provided.",
+              description,
               style: TextStyle(
                 fontSize: 16,
                 height: 1.5,
@@ -228,8 +788,6 @@ class AdDetailScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-
-            // Details Section Title
             Text(
               "Specifications",
               style: TextStyle(
@@ -239,25 +797,13 @@ class AdDetailScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-
-            // Details Rows (using custom styled helper)
-            _buildDetailRow(context, "Category", ad['category']),
-            _buildDetailRow(context, "Place", ad['place']),
-            _buildDetailRow(context, "Condition", ad['condition']),
-            _buildDetailRow(
-              context,
-              "Price",
-              ad['price'] != null ? "₹${ad['price']}" : "Not specified",
-              isPrice: true,
-            ),
-
+            _buildDetailRow(context, "Category", category),
+            _buildDetailRow(context, "Place", place),
+            _buildDetailRow(context, "Condition", condition),
+            _buildDetailRow(context, "Price", price, isPrice: true),
             if (isAdmin)
-              _buildDetailRow(
-                context,
-                "Duration (days)",
-                ad['durationDays']?.toString(),
-              ),
-            if (isAdmin) _buildDetailRow(context, "Status", ad['status']),
+              _buildDetailRow(context, "Duration (days)", durationDays),
+            if (isAdmin) _buildDetailRow(context, "Status", status),
             if (expiryDate != null && isAdmin)
               _buildDetailRow(
                 context,
@@ -266,8 +812,6 @@ class AdDetailScreen extends StatelessWidget {
                 isExpiry: true,
               ),
             const SizedBox(height: 20),
-
-            // Featured (only admin)
             if (isAdmin)
               Container(
                 padding: const EdgeInsets.symmetric(
@@ -275,16 +819,12 @@ class AdDetailScreen extends StatelessWidget {
                   vertical: 10,
                 ),
                 decoration: BoxDecoration(
-                  color:
-                      (ad['isFeatured'] == true
-                              ? Colors.green.shade50
-                              : Colors.grey.shade100)
-                          .withOpacity(0.8),
+                  color: isFeatured
+                      ? Colors.green.shade50
+                      : Colors.grey.shade100,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: ad['isFeatured'] == true
-                        ? Colors.green
-                        : Colors.grey.shade300,
+                    color: isFeatured ? Colors.green : Colors.grey.shade300,
                   ),
                 ),
                 child: Row(
@@ -294,12 +834,12 @@ class AdDetailScreen extends StatelessWidget {
                       "Featured Ad Status: ",
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: ad['isFeatured'] == true
+                        color: isFeatured
                             ? Colors.green.shade800
                             : Colors.grey.shade600,
                       ),
                     ),
-                    ad['isFeatured'] == true
+                    isFeatured
                         ? const Icon(Icons.star, color: Colors.green, size: 20)
                         : const Icon(
                             Icons.star_border,
@@ -310,37 +850,27 @@ class AdDetailScreen extends StatelessWidget {
                 ),
               ),
             const SizedBox(height: 30),
-
-            // Call / Chat button (only user)
-            if (!isAdmin && ad['contact'] != null)
+            if (!isAdmin && contact != null)
               Center(
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Call Button (Gradient Styled)
                     _buildGradientButton(
                       context: context,
                       label: "Call Now",
                       icon: Icons.call,
-                      onPressed: () {
-                        // Logic untouched: launchUrl call
-                        launchUrl(Uri.parse('tel:${ad['contact']}'));
-                      },
+                      onPressed: () => launchUrl(Uri.parse('tel:$contact')),
                     ),
                     const SizedBox(width: 16),
-                    // Chat Button (Gradient Styled)
                     _buildGradientButton(
                       context: context,
                       label: "Chat on WhatsApp",
                       icon: Icons.chat,
-                      onPressed: () {
-                        // Logic untouched: launchUrl call
-                        launchUrl(
-                          Uri.parse(
-                            'https://wa.me/${ad['contact']}?text=Hello%20I%20saw%20your%20ad%20"${ad['title']}"%20on%20KMG.',
-                          ),
-                        );
-                      },
+                      onPressed: () => launchUrl(
+                        Uri.parse(
+                          'https://wa.me/$contact?text=Hello%20I%20saw%20your%20ad%20"$title"%20on%20KMG.',
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -351,7 +881,6 @@ class AdDetailScreen extends StatelessWidget {
     );
   }
 
-  // Helper function to create a stylish gradient button
   Widget _buildGradientButton({
     required BuildContext context,
     required String label,
@@ -360,7 +889,7 @@ class AdDetailScreen extends StatelessWidget {
   }) {
     return Container(
       decoration: BoxDecoration(
-        gradient: AppTheme.primaryGradient, // Use theme gradient
+        gradient: AppTheme.primaryGradient,
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
@@ -373,7 +902,6 @@ class AdDetailScreen extends StatelessWidget {
       child: ElevatedButton.icon(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
-          // Make background transparent to show the container's gradient
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -389,7 +917,6 @@ class AdDetailScreen extends StatelessWidget {
     );
   }
 
-  // Helper function to build a stylized detail row
   Widget _buildDetailRow(
     BuildContext context,
     String label,
@@ -404,13 +931,13 @@ class AdDetailScreen extends StatelessWidget {
     );
 
     if (isPrice) {
-      valueColor = AppTheme.secondary; // Price highlighted with secondary color
+      valueColor = AppTheme.secondary;
       valueStyle = valueStyle.copyWith(
         fontWeight: FontWeight.w800,
         fontSize: 18,
       );
     } else if (isExpiry) {
-      valueColor = Colors.red.shade700; // Expiry highlighted with red
+      valueColor = Colors.red.shade700;
     }
 
     return Container(
@@ -454,7 +981,6 @@ class AdDetailScreen extends StatelessWidget {
     );
   }
 
-  // Original function for extending the ad (styles applied to dialog)
   void _showExtendDialog(
     BuildContext context,
     String adId,
@@ -469,7 +995,7 @@ class AdDetailScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(15),
           ),
           title: Text(
-            "Extend ${ad['title']}",
+            "Extend ${ad['title'] ?? 'Ad'}",
             style: const TextStyle(
               fontWeight: FontWeight.bold,
               color: AppTheme.primary,
@@ -494,7 +1020,6 @@ class AdDetailScreen extends StatelessWidget {
                   child: DropdownButton<int>(
                     value: extendDays,
                     isExpanded: true,
-                    // Logic untouched: dropdown items map
                     items: [7, 15, 30]
                         .map(
                           (e) => DropdownMenuItem(
@@ -506,7 +1031,6 @@ class AdDetailScreen extends StatelessWidget {
                           ),
                         )
                         .toList(),
-                    // Logic untouched: onChanged handler
                     onChanged: (val) {
                       if (val != null) setStateDialog(() => extendDays = val);
                     },
@@ -524,19 +1048,20 @@ class AdDetailScreen extends StatelessWidget {
               child: const Text("Cancel"),
             ),
             ElevatedButton(
-              // Logic untouched: onPressed handler for extension
               onPressed: () async {
-                final newExpiry = (ad["expiryDate"] as Timestamp).toDate().add(
+                final oldExpiry = ad["expiryDate"] as Timestamp?;
+                final newExpiry = oldExpiry?.toDate().add(
                   Duration(days: extendDays),
                 );
-                await FirebaseFirestore.instance
-                    .collection("classifieds")
-                    .doc(adId)
-                    .update({"expiryDate": newExpiry});
+                if (newExpiry != null) {
+                  await FirebaseFirestore.instance
+                      .collection("classifieds")
+                      .doc(adId)
+                      .update({"expiryDate": newExpiry});
+                }
                 if (!context.mounted) return;
                 Navigator.pop(ctx);
               },
-              // Styled button
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primary,
                 foregroundColor: AppTheme.iconOnPrimary,

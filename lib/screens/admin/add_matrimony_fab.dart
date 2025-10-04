@@ -42,6 +42,11 @@
 //   final TextEditingController createdByController = TextEditingController();
 //   final TextEditingController durationController = TextEditingController();
 
+//   // ✅ New Controllers
+//   final TextEditingController demandController = TextEditingController();
+//   final TextEditingController aboutController = TextEditingController();
+//   final TextEditingController interestsController = TextEditingController();
+
 //   bool isFeatured = false;
 //   File? selectedImage;
 //   final ImagePicker _picker = ImagePicker();
@@ -67,6 +72,11 @@
 //       createdByController.text = data["createdBy"] ?? "";
 //       isFeatured = data["isFeatured"] ?? false;
 //       durationController.text = data["durationDays"]?.toString() ?? "90";
+
+//       // ✅ Load new fields
+//       demandController.text = data["demand"] ?? "";
+//       aboutController.text = data["about"] ?? "";
+//       interestsController.text = data["interests"] ?? "";
 //     }
 //   }
 
@@ -128,12 +138,16 @@
 //           ? widget.existingData!["createdAt"]
 //           : DateTime.now(),
 //       "expiryDate": expiryDate,
+
+//       // ✅ Save new fields
+//       "demand": demandController.text.trim(),
+//       "about": aboutController.text.trim(),
+//       "interests": interestsController.text.trim(),
 //     };
 
 //     try {
 //       if (widget.existingProfileId != null &&
 //           widget.existingProfileId!.isNotEmpty) {
-//         // Update existing
 //         await _firestore
 //             .collection("matrimony")
 //             .doc(widget.existingProfileId)
@@ -142,7 +156,6 @@
 //           const SnackBar(content: Text("Profile updated successfully")),
 //         );
 //       } else {
-//         // Create new
 //         await _firestore.collection("matrimony").add(data);
 //         ScaffoldMessenger.of(context).showSnackBar(
 //           const SnackBar(content: Text("Profile added successfully")),
@@ -162,12 +175,14 @@
 //     String label, {
 //     TextInputType type = TextInputType.text,
 //     bool required = false,
+//     int maxLines = 1,
 //   }) {
 //     return Padding(
 //       padding: const EdgeInsets.only(bottom: 12),
 //       child: TextFormField(
 //         controller: controller,
 //         keyboardType: type,
+//         maxLines: maxLines,
 //         decoration: InputDecoration(labelText: label),
 //         validator: required
 //             ? (val) => val == null || val.isEmpty ? "Enter $label" : null
@@ -218,6 +233,20 @@
 //                 _buildTextField(heightController, "Height"),
 //                 _buildTextField(weightController, "Weight"),
 //                 _buildTextField(createdByController, "Profile Created By"),
+
+//                 // ✅ New Fields
+//                 _buildTextField(demandController, "Demand"),
+//                 _buildTextField(
+//                   aboutController,
+//                   "About",
+//                   maxLines: 3,
+//                 ), // multi-line
+//                 _buildTextField(
+//                   interestsController,
+//                   "Interests",
+//                   maxLines: 2,
+//                 ), // multi-line
+
 //                 const SizedBox(height: 12),
 
 //                 // Image Picker
@@ -276,10 +305,14 @@
 // }
 
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
 
 class AddMatrimonyFAB extends StatefulWidget {
   final String userId;
@@ -319,7 +352,7 @@ class _AddMatrimonyFABState extends State<AddMatrimonyFAB> {
   final TextEditingController createdByController = TextEditingController();
   final TextEditingController durationController = TextEditingController();
 
-  // ✅ New Controllers
+  // New Controllers
   final TextEditingController demandController = TextEditingController();
   final TextEditingController aboutController = TextEditingController();
   final TextEditingController interestsController = TextEditingController();
@@ -327,6 +360,7 @@ class _AddMatrimonyFABState extends State<AddMatrimonyFAB> {
   bool isFeatured = false;
   File? selectedImage;
   final ImagePicker _picker = ImagePicker();
+  double _uploadProgress = 0.0;
 
   @override
   void initState() {
@@ -350,17 +384,54 @@ class _AddMatrimonyFABState extends State<AddMatrimonyFAB> {
       isFeatured = data["isFeatured"] ?? false;
       durationController.text = data["durationDays"]?.toString() ?? "90";
 
-      // ✅ Load new fields
+      // Load new fields
       demandController.text = data["demand"] ?? "";
       aboutController.text = data["about"] ?? "";
       interestsController.text = data["interests"] ?? "";
     }
   }
 
+  Future<File?> _compressImage(File file) async {
+    try {
+      Uint8List? compressedBytes = await FlutterImageCompress.compressWithFile(
+        file.absolute.path,
+        minWidth: 800,
+        minHeight: 800,
+        quality: 80,
+      );
+      if (compressedBytes == null) return null;
+
+      final dir = await getTemporaryDirectory();
+      final targetPath = path.join(
+        dir.path,
+        "compressed_${DateTime.now().millisecondsSinceEpoch}.jpg",
+      );
+      final compressedFile = File(targetPath);
+      await compressedFile.writeAsBytes(compressedBytes);
+      return compressedFile;
+    } catch (e) {
+      debugPrint("Image compression failed: $e");
+      return null;
+    }
+  }
+
   Future<void> _pickImage() async {
     final picked = await _picker.pickImage(source: ImageSource.gallery);
     if (picked != null) {
-      setState(() => selectedImage = File(picked.path));
+      File original = File(picked.path);
+
+      if (await original.length() > 1024 * 1024) {
+        File? compressed = await _compressImage(original);
+        if (compressed != null) {
+          setState(() => selectedImage = compressed);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Image compression failed")),
+          );
+        }
+      } else {
+        setState(() => selectedImage = original);
+      }
     }
   }
 
@@ -370,9 +441,25 @@ class _AddMatrimonyFABState extends State<AddMatrimonyFAB> {
           .ref()
           .child("matrimony_photos")
           .child("${DateTime.now().millisecondsSinceEpoch}.jpg");
-      await ref.putFile(file);
+
+      UploadTask task = ref.putFile(
+        file,
+        SettableMetadata(contentType: "image/jpeg"),
+      );
+
+      task.snapshotEvents.listen((event) {
+        setState(() {
+          _uploadProgress =
+              event.bytesTransferred.toDouble() / event.totalBytes.toDouble();
+        });
+      });
+
+      await task;
       return await ref.getDownloadURL();
     } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error uploading image: $e")));
       return null;
     }
   }
@@ -383,6 +470,7 @@ class _AddMatrimonyFABState extends State<AddMatrimonyFAB> {
     String? photoUrl;
     if (selectedImage != null) {
       photoUrl = await _uploadImage(selectedImage!);
+      if (photoUrl == null) return;
     } else if (widget.existingData != null) {
       photoUrl = widget.existingData!["photo"];
     }
@@ -415,8 +503,6 @@ class _AddMatrimonyFABState extends State<AddMatrimonyFAB> {
           ? widget.existingData!["createdAt"]
           : DateTime.now(),
       "expiryDate": expiryDate,
-
-      // ✅ Save new fields
       "demand": demandController.text.trim(),
       "about": aboutController.text.trim(),
       "interests": interestsController.text.trim(),
@@ -510,19 +596,9 @@ class _AddMatrimonyFABState extends State<AddMatrimonyFAB> {
                 _buildTextField(heightController, "Height"),
                 _buildTextField(weightController, "Weight"),
                 _buildTextField(createdByController, "Profile Created By"),
-
-                // ✅ New Fields
                 _buildTextField(demandController, "Demand"),
-                _buildTextField(
-                  aboutController,
-                  "About",
-                  maxLines: 3,
-                ), // multi-line
-                _buildTextField(
-                  interestsController,
-                  "Interests",
-                  maxLines: 2,
-                ), // multi-line
+                _buildTextField(aboutController, "About", maxLines: 3),
+                _buildTextField(interestsController, "Interests", maxLines: 2),
 
                 const SizedBox(height: 12),
 
@@ -554,6 +630,12 @@ class _AddMatrimonyFABState extends State<AddMatrimonyFAB> {
                     ),
                   ],
                 ),
+
+                if (_uploadProgress > 0 && _uploadProgress < 1)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: LinearProgressIndicator(value: _uploadProgress),
+                  ),
 
                 _buildTextField(
                   durationController,

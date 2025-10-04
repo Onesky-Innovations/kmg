@@ -14,7 +14,12 @@ class LandingPage extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.circle, size: 100, color: Colors.blueAccent),
+                Image.asset(
+                  'assets/icons/KMGLOGO.png',
+                  width: 150,
+                  height: 150,
+                  fit: BoxFit.contain,
+                ),
                 const SizedBox(height: 10),
                 const Text(
                   "KMG",
