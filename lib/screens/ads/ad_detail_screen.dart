@@ -563,6 +563,9 @@ import 'package:intl/intl.dart';
 import 'package:kmg/screens/admin/Add_Classified_FAB.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:kmg/theme/app_theme.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class AdDetailScreen extends StatelessWidget {
   final DocumentSnapshot adDoc;
@@ -576,8 +579,10 @@ class AdDetailScreen extends StatelessWidget {
     final expiryDate = ad['expiryDate'] != null
         ? (ad['expiryDate'] as Timestamp).toDate()
         : null;
+    final postedDate = ad['postedAt'] != null
+        ? (ad['postedAt'] as Timestamp).toDate()
+        : null;
 
-    // Skip banners for normal users
     if (!isAdmin && (ad['type'] ?? '') == 'Banner') {
       return Scaffold(
         backgroundColor: AppTheme.background,
@@ -599,11 +604,13 @@ class AdDetailScreen extends StatelessWidget {
     final images = List<String>.from(ad['images'] ?? []);
     final status = ad['status']?.toString() ?? '-';
     final type = ad['type']?.toString() ?? 'Unknown';
-    final isFeatured = ad['isFeatured'] == true;
     final durationDays = ad['durationDays']?.toString() ?? '30';
     final description =
         ad['description']?.toString() ?? 'No description provided.';
     final contact = ad['contact']?.toString();
+
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final isSignedIn = currentUser != null;
 
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
@@ -616,6 +623,112 @@ class AdDetailScreen extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
         ),
         actions: [
+          // Save/Unsave
+          IconButton(
+            onPressed: () async {
+              final currentUser = FirebaseAuth.instance.currentUser;
+              if (currentUser == null) {
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text("Sign in required"),
+                    content: const Text(
+                      "To save this ad, please sign in or continue as guest.",
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text("Cancel"),
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          // TODO: Navigate to sign-in page
+                        },
+                        child: const Text("Sign In"),
+                      ),
+                    ],
+                  ),
+                );
+                return;
+              }
+
+              try {
+                final savedRef = FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(currentUser.uid)
+                    .collection('saved_ads')
+                    .doc(adDoc.id);
+
+                final docSnapshot = await savedRef.get();
+
+                if (docSnapshot.exists) {
+                  await savedRef.delete();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Ad removed from saved.")),
+                    );
+                  }
+                } else {
+                  await savedRef.set({
+                    'adId': adDoc.id,
+                    'title': ad['title'] ?? '',
+                    'category': ad['category'] ?? '',
+                    'place': ad['place'] ?? '',
+                    'images': ad['images'] ?? [],
+                    'savedAt': FieldValue.serverTimestamp(),
+                  });
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Ad saved successfully.")),
+                    );
+                  }
+                }
+              } catch (e, st) {
+                debugPrint("Error saving ad: $e\n$st");
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Failed to save the ad.")),
+                  );
+                }
+              }
+            },
+            icon: const Icon(Icons.bookmark),
+            tooltip: 'Save/Unsave',
+          ),
+
+          // Share
+          IconButton(
+            icon: const Icon(Icons.share),
+            tooltip: 'Share',
+            onPressed: () async {
+              final safeTitle = title.replaceAll('"', "'");
+              final shareText =
+                  'Check out this ad "$safeTitle" on KMG app: https://kmg.example.com/ad/${adDoc.id ?? ''}';
+
+              if (kIsWeb) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Sharing is not supported on web platform."),
+                  ),
+                );
+                return;
+              }
+
+              try {
+                await Share.share(shareText, subject: 'Interesting Ad');
+              } catch (e) {
+                debugPrint("Share failed: $e");
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Unable to share this ad.")),
+                  );
+                }
+              }
+            },
+          ),
+
+          // Admin Actions
           if (isAdmin)
             PopupMenuButton<String>(
               color: AppTheme.background,
@@ -674,12 +787,29 @@ class AdDetailScreen extends StatelessWidget {
                       ],
                     ),
                   );
+
                   if (confirm == true) {
-                    await FirebaseFirestore.instance
-                        .collection("classifieds")
-                        .doc(adDoc.id)
-                        .delete();
-                    if (context.mounted) Navigator.pop(context);
+                    try {
+                      await FirebaseFirestore.instance
+                          .collection("classifieds")
+                          .doc(adDoc.id)
+                          .delete();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("Ad deleted successfully."),
+                          ),
+                        );
+                        Navigator.pop(context);
+                      }
+                    } catch (e) {
+                      debugPrint("Delete failed: $e");
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Failed to delete ad.")),
+                        );
+                      }
+                    }
                   }
                 }
               },
@@ -711,6 +841,7 @@ class AdDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Posted by
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
@@ -736,49 +867,68 @@ class AdDetailScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
+
+            // Images
             if (images.isNotEmpty)
-              Container(
+              SizedBox(
                 height: 220,
-                margin: const EdgeInsets.only(bottom: 20),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  // boxShadow: [
-                  //   BoxShadow(
-                  //     color: Colors.grey.withOpacity(0.3),
-                  //     spreadRadius: 1,
-                  //     blurRadius: 10,
-                  //     offset: const Offset(0, 4),
-                  //   ),
-                  // ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: images.map((imgUrl) {
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 12),
-                        child: Image.network(
-                          imgUrl,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: images.length,
+                  itemBuilder: (context, index) {
+                    return Stack(
+                      children: [
+                        Container(
+                          margin: const EdgeInsets.only(right: 12),
                           width: 300,
-                          height: 220,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              Container(
-                                color: Colors.grey[200],
-                                width: 300,
-                                height: 220,
-                                child: const Icon(
-                                  Icons.image_not_supported,
-                                  color: Colors.grey,
-                                ),
-                              ),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: Image.network(
+                              images[index],
+                              width: 300,
+                              height: 220,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Container(
+                                    color: Colors.grey[200],
+                                    width: 300,
+                                    height: 220,
+                                    child: const Icon(
+                                      Icons.image_not_supported,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                            ),
+                          ),
                         ),
-                      );
-                    }).toList(),
-                  ),
+                        Positioned(
+                          bottom: 8,
+                          right: 8,
+                          child: Text(
+                            'KMG',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.6),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                              shadows: const [
+                                Shadow(
+                                  blurRadius: 3,
+                                  color: Colors.black,
+                                  offset: Offset(1, 1),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
+            const SizedBox(height: 20),
             Text(
               description,
               style: TextStyle(
@@ -788,6 +938,8 @@ class AdDetailScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
+
+            // Specifications
             Text(
               "Specifications",
               style: TextStyle(
@@ -801,6 +953,12 @@ class AdDetailScreen extends StatelessWidget {
             _buildDetailRow(context, "Place", place),
             _buildDetailRow(context, "Condition", condition),
             _buildDetailRow(context, "Price", price, isPrice: true),
+            if (postedDate != null)
+              _buildDetailRow(
+                context,
+                "Posted On",
+                DateFormat('yyyy-MM-dd').format(postedDate),
+              ),
             if (isAdmin)
               _buildDetailRow(context, "Duration (days)", durationDays),
             if (isAdmin) _buildDetailRow(context, "Status", status),
@@ -812,44 +970,8 @@ class AdDetailScreen extends StatelessWidget {
                 isExpiry: true,
               ),
             const SizedBox(height: 20),
-            if (isAdmin)
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: isFeatured
-                      ? Colors.green.shade50
-                      : Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: isFeatured ? Colors.green : Colors.grey.shade300,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      "Featured Ad Status: ",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: isFeatured
-                            ? Colors.green.shade800
-                            : Colors.grey.shade600,
-                      ),
-                    ),
-                    isFeatured
-                        ? const Icon(Icons.star, color: Colors.green, size: 20)
-                        : const Icon(
-                            Icons.star_border,
-                            color: Colors.grey,
-                            size: 20,
-                          ),
-                  ],
-                ),
-              ),
-            const SizedBox(height: 30),
+
+            // Call / WhatsApp buttons for user
             if (!isAdmin && contact != null)
               Center(
                 child: Row(
@@ -859,18 +981,38 @@ class AdDetailScreen extends StatelessWidget {
                       context: context,
                       label: "Call Now",
                       icon: Icons.call,
-                      onPressed: () => launchUrl(Uri.parse('tel:$contact')),
+                      onPressed: () async {
+                        final url = Uri.parse('tel:$contact');
+                        if (await canLaunchUrl(url)) {
+                          launchUrl(url);
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Cannot make a call."),
+                            ),
+                          );
+                        }
+                      },
                     ),
                     const SizedBox(width: 16),
                     _buildGradientButton(
                       context: context,
                       label: "Chat on WhatsApp",
                       icon: Icons.chat,
-                      onPressed: () => launchUrl(
-                        Uri.parse(
+                      onPressed: () async {
+                        final url = Uri.parse(
                           'https://wa.me/$contact?text=Hello%20I%20saw%20your%20ad%20"$title"%20on%20KMG.',
-                        ),
-                      ),
+                        );
+                        if (await canLaunchUrl(url)) {
+                          launchUrl(url);
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Cannot open WhatsApp."),
+                            ),
+                          );
+                        }
+                      },
                     ),
                   ],
                 ),
@@ -1054,13 +1196,32 @@ class AdDetailScreen extends StatelessWidget {
                   Duration(days: extendDays),
                 );
                 if (newExpiry != null) {
-                  await FirebaseFirestore.instance
-                      .collection("classifieds")
-                      .doc(adId)
-                      .update({"expiryDate": newExpiry});
+                  try {
+                    await FirebaseFirestore.instance
+                        .collection("classifieds")
+                        .doc(adId)
+                        .update({"expiryDate": newExpiry});
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            "Ad extended by $extendDays days successfully.",
+                          ),
+                        ),
+                      );
+                      Navigator.pop(ctx);
+                    }
+                  } catch (e) {
+                    debugPrint("Extend failed: $e");
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Failed to extend the ad."),
+                        ),
+                      );
+                    }
+                  }
                 }
-                if (!context.mounted) return;
-                Navigator.pop(ctx);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primary,
