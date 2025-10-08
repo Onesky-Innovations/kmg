@@ -319,6 +319,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:kmg/screens/legal/contact_support_screen.dart';
 import 'package:kmg/screens/legal/privacy_screen.dart';
 import 'package:kmg/screens/legal/terms_screen.dart';
+import 'package:kmg/screens/saved/saveditems.dart';
 
 import 'EditProfileScreen.dart';
 import 'settings_screen.dart';
@@ -600,11 +601,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       },
                       // onTap: () {},
                     ),
-                    // ListTile(
-                    //   leading: const Icon(Icons.star_rate),
-                    //   title: const Text("Rate the App"),
-                    //   onTap: () {},
-                    // ),
+                    ListTile(
+                      leading: const Icon(Icons.bookmark),
+                      title: const Text("Saved Items"),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const Saveditems()),
+                      ),
+                    ),
                     ListTile(
                       leading: const Icon(Icons.settings),
                       title: const Text("Settings"),

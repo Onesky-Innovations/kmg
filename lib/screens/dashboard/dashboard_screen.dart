@@ -7,7 +7,7 @@ import 'package:kmg/widgets/category_chips.dart';
 import 'package:kmg/widgets/auto_scroll_ad.dart';
 
 import '../ads/ads_feed_screen.dart';
-import '../saved/saved_screen.dart';
+import '../saved/featured.dart';
 import '../matrimony/matrimony_screen.dart';
 import 'package:circle_bottom_navigation/widgets/tab_data.dart';
 
@@ -28,7 +28,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   final List<TabData> _tabs = [
     TabData(icon: Icons.home, title: "Home", iconSize: 28),
     TabData(icon: Icons.people, title: "Matrimony", iconSize: 28),
-    TabData(icon: Icons.bookmark, title: "Saved", iconSize: 28),
+    TabData(icon: Icons.star, title: "Featured", iconSize: 28),
     TabData(icon: Icons.person, title: "Profile", iconSize: 28),
   ];
 
@@ -161,7 +161,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       case 1:
         return const MatrimonyScreen();
       case 2:
-        return const SavedScreen();
+        return const FeaturedScreen();
       case 3:
         return const ProfileScreen();
       default:

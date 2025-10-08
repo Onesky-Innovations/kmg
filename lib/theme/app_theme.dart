@@ -1,13 +1,8 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static const Color primary = Color.fromARGB(255, 4, 139, 83); // Main accent
-  static const Color secondary = Color.fromARGB(
-    255,
-    0,
-    100,
-    45,
-  ); // Secondary accent
+  static const Color primary = Color.fromARGB(255, 108, 55, 144); // Main accent
+  static const Color secondary = Color.fromARGB(255, 81, 20, 134); // Secondary accent
 
   static const Color background = Color(
     0xFFF0F2F5,

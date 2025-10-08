@@ -14,12 +14,12 @@ class LandingPage extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Image.asset(
-                  'assets/icons/KMGLOGO.png',
-                  width: 150,
-                  height: 150,
-                  fit: BoxFit.contain,
-                ),
+                // Image.asset(
+                //   'assets/icons/KMGLOGO.png',
+                //   width: 150,
+                //   height: 150,
+                //   fit: BoxFit.contain,
+                // ),
                 const SizedBox(height: 10),
                 const Text(
                   "KMG",
