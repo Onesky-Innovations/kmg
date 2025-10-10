@@ -1,5 +1,7 @@
 import 'package:circle_bottom_navigation/circle_bottom_navigation.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:kmg/screens/ads/BannerDetailScreen.dart';
 import 'package:kmg/screens/settings/profile_screen.dart';
 import 'package:kmg/theme/app_theme.dart';
 import 'package:kmg/widgets/custom_app_bar.dart';
@@ -68,7 +70,66 @@ class _DashboardScreenState extends State<DashboardScreen>
                       ),
 
                       // Auto scrolling ads
-                      SliverToBoxAdapter(child: AutoScrollAd(height: 150)),
+                      SliverToBoxAdapter(
+                        child: StreamBuilder<QuerySnapshot>(
+                          stream: FirebaseFirestore.instance
+                              .collection('classifieds')
+                              .doc('baners')
+                              .collection('baner')
+                              .orderBy('createdAt', descending: true)
+                              .snapshots(),
+                          builder: (context, snapshot) {
+                            if (!snapshot.hasData) {
+                              return const SizedBox(
+                                height: 150,
+                                child: Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              );
+                            }
+
+                            final bannerDocs = snapshot.data!.docs;
+                            if (bannerDocs.isEmpty) {
+                              return const SizedBox(
+                                height: 150,
+                                child: Center(child: Text("No banners found")),
+                              );
+                            }
+
+                            return AutoScrollAd(
+                              height: 150,
+                              ads: bannerDocs,
+                              onTap: (index) {
+                                final data =
+                                    bannerDocs[index].data()
+                                        as Map<String, dynamic>;
+                                final images =
+                                    data['images'] as List<dynamic>? ?? [];
+                                final imageUrl = images.isNotEmpty
+                                    ? images[0]
+                                    : '';
+
+                                final description = data['description'] ?? '';
+                                final phone = data['phone'] ?? '';
+
+                                if (imageUrl.isNotEmpty) {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => BannerDetailScreen(
+                                        imageUrl: imageUrl,
+                                        description: description,
+                                        phone: phone,
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
+                            );
+                          },
+                        ),
+                      ),
+
                       const SliverToBoxAdapter(child: SizedBox(height: 10)),
                     ];
                   },

@@ -195,13 +195,22 @@ class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
                                     ? "Banner Ad"
                                     : "User: ${ad['userId']}\nExpiry: ${ad['expiryDate']?.toDate()?.toString().split(" ").first ?? "N/A"}",
                               ),
+
                               onTap: () {
+                                final adDoc = filteredAds[index];
+                                final adData =
+                                    adDoc.data() as Map<String, dynamic>;
+                                final adId = adDoc.id;
+
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder: (_) => AdDetailScreen(
-                                      adDoc: filteredAds[index],
+                                      adDoc: adDoc,
                                       isAdmin: isAdmin,
+                                      adId: adId,
+                                      adData: adData,
+                                      userId: adData['userId'] ?? '',
                                     ),
                                   ),
                                 );

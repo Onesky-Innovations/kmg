@@ -5,7 +5,12 @@
 // class AutoScrollAd extends StatefulWidget {
 //   final double height;
 
-//   const AutoScrollAd({super.key, this.height = 180});
+//   const AutoScrollAd({
+//     super.key,
+//     this.height = 180,
+//     required List<QueryDocumentSnapshot<Object?>> ads,
+//     required Null Function(dynamic index) onTap,
+//   });
 
 //   @override
 //   State<AutoScrollAd> createState() => _AutoScrollAdState();
@@ -25,7 +30,7 @@
 
 //   void _startAutoScroll(int itemCount) {
 //     _timer?.cancel();
-//     if (itemCount <= 1) return; // Only scroll if more than 1 banner
+//     if (itemCount <= 1) return;
 
 //     _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
 //       if (!_pageController.hasClients) return;
@@ -44,85 +49,56 @@
 //     return SizedBox(
 //       height: widget.height,
 //       child: StreamBuilder<QuerySnapshot>(
-//         stream:FirebaseFirestore.instance
-//         .collection("classifieds")
-//         .doc("baners")
-//         .collection("baner")
-//         .orderBy("createdAt", descending: true).snapshots(),
+//         stream: FirebaseFirestore.instance
+//             .collection("classifieds")
+//             .doc("baners")
+//             .collection("baner")
+//             .orderBy("createdAt", descending: true)
+//             .snapshots(),
 //         builder: (context, snapshot) {
-
 //           if (snapshot.connectionState == ConnectionState.waiting) {
 //             return const Center(child: CircularProgressIndicator());
 //           }
 
 //           final docs = snapshot.data?.docs ?? [];
-//           if (docs.isEmpty) {
+//           // Filter out banners without images
+//           final bannersWithImages = docs.where((doc) {
+//             final ad = doc.data() as Map<String, dynamic>;
+//             final images = ad['images'] as List<dynamic>? ?? [];
+//             return images.isNotEmpty;
+//           }).toList();
+
+//           if (bannersWithImages.isEmpty) {
 //             return const Center(child: Text("No banners available"));
 //           }
 
-//           // Start auto-scroll if banner count changes
-//           if (_lastItemCount != docs.length) {
-//             _lastItemCount = docs.length;
+//           if (_lastItemCount != bannersWithImages.length) {
+//             _lastItemCount = bannersWithImages.length;
 //             WidgetsBinding.instance.addPostFrameCallback((_) {
-//               _startAutoScroll(docs.length);
+//               _startAutoScroll(bannersWithImages.length);
 //             });
 //           }
 
 //           return PageView.builder(
 //             controller: _pageController,
-//             itemCount: docs.length,
+//             itemCount: bannersWithImages.length,
 //             itemBuilder: (context, index) {
-//               final ad = docs[index].data() as Map<String, dynamic>;
-//               final images = ad['images'] as List<dynamic>? ?? [];
-//               final imageUrl = images.isNotEmpty ? images[0] : null;
+//               final ad =
+//                   bannersWithImages[index].data() as Map<String, dynamic>;
+//               final images = ad['images'] as List<dynamic>;
+//               final imageUrl = images[0];
 
 //               return Padding(
 //                 padding: const EdgeInsets.all(12.0),
-//                 child: Container(
-//                   decoration: BoxDecoration(
-//                     color: Colors.blueAccent.shade100,
-//                     borderRadius: BorderRadius.circular(16),
-//                   ),
-//                   child: Stack(
-//                     fit: StackFit.expand,
-//                     children: [
-//                       ClipRRect(
-//                         borderRadius: BorderRadius.circular(16),
-//                         child: imageUrl != null
-//                             ? Image.network(
-//                                 imageUrl,
-//                                 fit: BoxFit.cover,
-//                                 errorBuilder: (context, error, stackTrace) {
-//                                   return _placeholder();
-//                                 },
-//                               )
-//                             : _placeholder(),
-//                       ),
-//                       Positioned(
-//                         bottom: 12,
-//                         left: 12,
-//                         right: 12,
-//                         child: Container(
-//                           padding: const EdgeInsets.symmetric(
-//                             horizontal: 8,
-//                             vertical: 4,
-//                           ),
-//                           decoration: BoxDecoration(
-//                             color: Colors.black54,
-//                             borderRadius: BorderRadius.circular(8),
-//                           ),
-//                           child: Text(
-//                             ad['title'] ?? 'No title',
-//                             style: const TextStyle(
-//                               fontSize: 16,
-//                               fontWeight: FontWeight.bold,
-//                               color: Colors.white,
-//                             ),
-//                             textAlign: TextAlign.center,
-//                           ),
-//                         ),
-//                       ),
-//                     ],
+//                 child: ClipRRect(
+//                   borderRadius: BorderRadius.circular(16),
+//                   child: Image.network(
+//                     imageUrl,
+//                     fit: BoxFit.cover,
+//                     errorBuilder: (context, error, stackTrace) {
+//                       // Show nothing if image fails
+//                       return Container(color: Colors.grey.shade300);
+//                     },
 //                   ),
 //                 ),
 //               );
@@ -133,11 +109,100 @@
 //     );
 //   }
 
-//   Widget _placeholder() {
-//     return Container(
-//       color: Colors.blueAccent.shade200,
-//       child: const Center(
-//         child: Icon(Icons.image, size: 64, color: Colors.white),
+//   @override
+//   void dispose() {
+//     _pageController.dispose();
+//     _timer?.cancel();
+//     super.dispose();
+//   }
+// }
+
+// import 'dart:async';
+// import 'package:flutter/material.dart';
+// import 'package:cloud_firestore/cloud_firestore.dart';
+
+// class AutoScrollAd extends StatefulWidget {
+//   final double height;
+//   final List<QueryDocumentSnapshot<Object?>> ads;
+//   final void Function(int index) onTap; // use proper type
+
+//   const AutoScrollAd({
+//     super.key,
+//     this.height = 180,
+//     required this.ads,
+//     required this.onTap,
+//   });
+
+//   @override
+//   State<AutoScrollAd> createState() => _AutoScrollAdState();
+// }
+
+// class _AutoScrollAdState extends State<AutoScrollAd> {
+//   late final PageController _pageController;
+//   int _currentPage = 0;
+//   Timer? _timer;
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     _pageController = PageController();
+//     _startAutoScroll(widget.ads.length);
+//   }
+
+//   void _startAutoScroll(int itemCount) {
+//     _timer?.cancel();
+//     if (itemCount <= 1) return;
+
+//     _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
+//       if (!_pageController.hasClients) return;
+
+//       _currentPage = (_currentPage + 1) % itemCount;
+//       _pageController.animateToPage(
+//         _currentPage,
+//         duration: const Duration(milliseconds: 500),
+//         curve: Curves.easeInOut,
+//       );
+//     });
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     if (widget.ads.isEmpty) {
+//       return SizedBox(
+//         height: widget.height,
+//         child: const Center(child: Text("No banners available")),
+//       );
+//     }
+
+//     return SizedBox(
+//       height: widget.height,
+//       child: PageView.builder(
+//         controller: _pageController,
+//         itemCount: widget.ads.length,
+//         itemBuilder: (context, index) {
+//           final ad = widget.ads[index].data() as Map<String, dynamic>;
+//           final images = ad['images'] as List<dynamic>? ?? [];
+//           if (images.isEmpty) return const SizedBox();
+
+//           final imageUrl = images[0];
+
+//           return GestureDetector(
+//             onTap: () => widget.onTap(index), // handle tap
+//             child: Padding(
+//               padding: const EdgeInsets.all(12.0),
+//               child: ClipRRect(
+//                 borderRadius: BorderRadius.circular(16),
+//                 child: Image.network(
+//                   imageUrl,
+//                   fit: BoxFit.cover,
+//                   errorBuilder: (context, error, stackTrace) {
+//                     return Container(color: Colors.grey.shade300);
+//                   },
+//                 ),
+//               ),
+//             ),
+//           );
+//         },
 //       ),
 //     );
 //   }
@@ -153,11 +218,18 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:kmg/screens/ads/BannerDetailScreen.dart';
+// import 'package:kmg/screens/ads/banner_detail_screen.dart'; // ✅ Use correct path
 
 class AutoScrollAd extends StatefulWidget {
   final double height;
 
-  const AutoScrollAd({super.key, this.height = 180});
+  const AutoScrollAd({
+    super.key,
+    this.height = 180,
+    required List<QueryDocumentSnapshot<Object?>> ads,
+    required Null Function(dynamic index) onTap,
+  });
 
   @override
   State<AutoScrollAd> createState() => _AutoScrollAdState();
@@ -181,7 +253,6 @@ class _AutoScrollAdState extends State<AutoScrollAd> {
 
     _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
       if (!_pageController.hasClients) return;
-
       _currentPage = (_currentPage + 1) % itemCount;
       _pageController.animateToPage(
         _currentPage,
@@ -208,6 +279,7 @@ class _AutoScrollAdState extends State<AutoScrollAd> {
           }
 
           final docs = snapshot.data?.docs ?? [];
+
           // Filter out banners without images
           final bannersWithImages = docs.where((doc) {
             final ad = doc.data() as Map<String, dynamic>;
@@ -219,6 +291,7 @@ class _AutoScrollAdState extends State<AutoScrollAd> {
             return const Center(child: Text("No banners available"));
           }
 
+          // Restart auto-scroll if new data count changes
           if (_lastItemCount != bannersWithImages.length) {
             _lastItemCount = bannersWithImages.length;
             WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -234,18 +307,34 @@ class _AutoScrollAdState extends State<AutoScrollAd> {
                   bannersWithImages[index].data() as Map<String, dynamic>;
               final images = ad['images'] as List<dynamic>;
               final imageUrl = images[0];
+              final description =
+                  ad['description'] ?? 'No description available';
+              final phone = ad['phone'] ?? '';
 
-              return Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Image.network(
-                    imageUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      // Show nothing if image fails
-                      return Container(color: Colors.grey.shade300);
-                    },
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => BannerDetailScreen(
+                        imageUrl: imageUrl,
+                        description: description,
+                        phone: phone,
+                      ),
+                    ),
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(color: Colors.grey.shade300);
+                      },
+                    ),
                   ),
                 ),
               );

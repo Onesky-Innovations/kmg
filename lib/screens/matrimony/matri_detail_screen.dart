@@ -1,13 +1,18 @@
+// lib/screens/ads/matri_detail_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:kmg/theme/app_theme.dart'; // Import the defined theme
 
-const Color primaryColor = Color(0xFF4A148C);
-const Color accentColor = Color(0xFFD1C4E9);
+// Use constants from the imported AppTheme
+const Color primaryColor = AppTheme.primaryColor;
+const Color accentColor = AppTheme.accentColor;
 
 class MatriDetailScreen extends StatelessWidget {
   final String profileId;
 
+  // The 'profile' is required by the original constructor, though unused here
   const MatriDetailScreen({
     super.key,
     required this.profileId,
@@ -192,7 +197,6 @@ class MatriDetailScreen extends StatelessWidget {
                       ),
 
                       // Professional & Other Details
-                      // Professional & Other Details with Demand last
                       _sectionCard(
                         title: "Professional & Other Details",
                         children: [

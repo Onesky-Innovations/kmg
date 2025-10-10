@@ -571,7 +571,14 @@ class AdDetailScreen extends StatelessWidget {
   final DocumentSnapshot adDoc;
   final bool isAdmin;
 
-  const AdDetailScreen({super.key, required this.adDoc, this.isAdmin = false});
+  const AdDetailScreen({
+    super.key,
+    required this.adDoc,
+    this.isAdmin = false,
+    required String adId,
+    required Map<String, dynamic> adData,
+    required String userId,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -875,59 +882,152 @@ class AdDetailScreen extends StatelessWidget {
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   itemCount: images.length,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                  ), // centers list
                   itemBuilder: (context, index) {
-                    return Stack(
-                      children: [
-                        Container(
-                          margin: const EdgeInsets.only(right: 12),
-                          width: 300,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: Image.network(
-                              images[index],
-                              width: 300,
-                              height: 220,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  Container(
-                                    color: Colors.grey[200],
+                    final imageUrl = images[index];
+                    return Center(
+                      child: GestureDetector(
+                        onTap: () {
+                          // ✅ Full screen view with watermark + close (X)
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => Scaffold(
+                                backgroundColor: Colors.black,
+                                body: Stack(
+                                  children: [
+                                    Center(
+                                      child: InteractiveViewer(
+                                        child: Image.network(
+                                          imageUrl,
+                                          fit: BoxFit.contain,
+                                          errorBuilder:
+                                              (context, error, stackTrace) =>
+                                                  const Icon(
+                                                    Icons.broken_image,
+                                                    color: Colors.white54,
+                                                    size: 100,
+                                                  ),
+                                        ),
+                                      ),
+                                    ),
+                                    // ✅ Watermark on both corners in full screen
+                                    Positioned.fill(
+                                      child: Align(
+                                        alignment: Alignment.center,
+                                        child: Padding(
+                                          padding: const EdgeInsets.only(
+                                            right: 200,
+                                            top: 100,
+                                          ), // 👈 adjust here
+                                          child: Text(
+                                            'KMG',
+                                            style: TextStyle(
+                                              color: Colors.white.withOpacity(
+                                                0.5,
+                                              ),
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 36,
+                                              letterSpacing: 2,
+                                              shadows: const [
+                                                Shadow(
+                                                  blurRadius: 6,
+                                                  color: Colors.black,
+                                                  offset: Offset(2, 2),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+
+                                    // ✅ Close (X) button
+                                    Positioned(
+                                      top: 40,
+                                      right: 20,
+                                      child: IconButton(
+                                        icon: const Icon(
+                                          Icons.close,
+                                          color: Colors.white,
+                                          size: 30,
+                                        ),
+                                        onPressed: () => Navigator.pop(context),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                        child: Stack(
+                          children: [
+                            // 👇 Move image slightly (adjust offset to left/right as needed)
+                            Transform.translate(
+                              offset: const Offset(
+                                20,
+                                0,
+                              ), // +10 → move RIGHT | -10 → move LEFT
+                              child: Container(
+                                margin: const EdgeInsets.only(right: 12),
+                                width: 300,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: Image.network(
+                                    imageUrl,
                                     width: 300,
                                     height: 220,
-                                    child: const Icon(
-                                      Icons.image_not_supported,
-                                      color: Colors.grey,
-                                    ),
+                                    fit: BoxFit.cover,
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            Container(
+                                              color: Colors.grey[200],
+                                              width: 300,
+                                              height: 220,
+                                              child: const Icon(
+                                                Icons.image_not_supported,
+                                                color: Colors.grey,
+                                              ),
+                                            ),
                                   ),
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 8,
-                          right: 8,
-                          child: Text(
-                            'KMG',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.6),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 20,
-                              shadows: const [
-                                Shadow(
-                                  blurRadius: 3,
-                                  color: Colors.black,
-                                  offset: Offset(1, 1),
                                 ),
-                              ],
+                              ),
                             ),
-                          ),
+
+                            // ✅ Watermark (bottom-left)
+                            Positioned(
+                              bottom: 8,
+                              left: 25,
+                              child: Text(
+                                'KMG',
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.7),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                  shadows: const [
+                                    Shadow(
+                                      blurRadius: 3,
+                                      color: Colors.black,
+                                      offset: Offset(1, 1),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     );
                   },
                 ),
               ),
+
             const SizedBox(height: 20),
             Text(
               description,

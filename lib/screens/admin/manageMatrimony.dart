@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:kmg/screens/admin/add_matrimony_fab.dart';
-import 'package:kmg/screens/ads/matri_detail_screen.dart';
+import 'package:kmg/screens/matrimony/matri_detail_screen.dart';
 
 class ManageMatrimonyScreen extends StatefulWidget {
   const ManageMatrimonyScreen({super.key});

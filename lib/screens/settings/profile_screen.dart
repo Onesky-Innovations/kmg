@@ -562,7 +562,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       // onTap: () {},
                     ),
                     ListTile(
-                      leading: const Icon(Icons.support_agent),
+                      leading: const Icon(Icons.headphones_outlined),
                       title: const Text("Contact Support"),
                       onTap: () {
                         Navigator.push(

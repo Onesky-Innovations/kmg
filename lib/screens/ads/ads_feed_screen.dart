@@ -127,6 +127,9 @@ class AdsFeedScreen extends StatelessWidget {
                       builder: (_) => AdDetailScreen(
                         adDoc: activeAds[index],
                         isAdmin: false,
+                        adId: '',
+                        adData: {},
+                        userId: '',
                       ),
                     ),
                   );
