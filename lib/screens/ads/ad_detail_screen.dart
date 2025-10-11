@@ -557,10 +557,13 @@
 //   }
 // }
 
+//----------------------------------------------------------------------------------------------------------------------------------
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:kmg/screens/admin/Add_Classified_FAB.dart';
+import 'package:kmg/utils/user_name_fetcher.dart' as user_utils;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:kmg/theme/app_theme.dart';
 import 'package:share_plus/share_plus.dart';
@@ -855,14 +858,45 @@ class AdDetailScreen extends StatelessWidget {
                 color: AppTheme.primary.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Text(
-                "Posted by: $userId",
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.primary,
-                ),
+
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    "Posted by: ",
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.primary,
+                    ),
+                  ),
+                  user_utils.UserNameFetcher(
+                    userId: ad['userId'] ?? '',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.primary,
+                    ),
+                  ),
+                ],
               ),
+
+              //   child: Text(
+              //     "Posted by: ${ad['userId'] ?? 'Unknown User'}",
+              //     style: const TextStyle(
+              //       fontSize: 14,
+              //       fontWeight: FontWeight.w600,
+              //       color: AppTheme.primary,
+              //     ),
+              //   ),
+              //   child: Text(
+              //     "Posted by: $userId",
+              //     style: const TextStyle(
+              //       fontSize: 14,
+              //       fontWeight: FontWeight.w600,
+              //       color: AppTheme.primary,
+              //     ),
+              //   ),
             ),
             const SizedBox(height: 20),
             Text(
@@ -1342,3 +1376,577 @@ class AdDetailScreen extends StatelessWidget {
     );
   }
 }
+
+//------------------------------------------------------------------------------------------------------------------
+
+// import 'package:flutter/material.dart';
+// import 'package:cloud_firestore/cloud_firestore.dart';
+// import 'package:intl/intl.dart';
+// import 'package:kmg/screens/admin/Add_Classified_FAB.dart';
+// import 'package:url_launcher/url_launcher.dart';
+// import 'package:kmg/theme/app_theme.dart';
+// import 'package:share_plus/share_plus.dart';
+// import 'package:firebase_auth/firebase_auth.dart';
+// import 'package:flutter/foundation.dart' show kIsWeb;
+// import 'package:kmg/utils/user_name_fetcher.dart';
+
+// class AdDetailScreen extends StatelessWidget {
+//   final DocumentSnapshot adDoc;
+//   final bool isAdmin;
+
+//   const AdDetailScreen({
+//     super.key,
+//     required this.adDoc,
+//     this.isAdmin = false,
+//     required String adId, // kept for consistency
+//     required Map<String, dynamic> adData,
+//     required String userId,
+//   });
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final ad = adDoc.data() as Map<String, dynamic>? ?? {};
+//     final expiryDate = ad['expiryDate'] != null
+//         ? (ad['expiryDate'] as Timestamp).toDate()
+//         : null;
+//     final postedDate = ad['postedAt'] != null
+//         ? (ad['postedAt'] as Timestamp).toDate()
+//         : null;
+
+//     if (!isAdmin && (ad['type'] ?? '') == 'Banner') {
+//       return Scaffold(
+//         backgroundColor: AppTheme.background,
+//         body: Center(
+//           child: Text(
+//             "This ad is not visible.",
+//             style: TextStyle(fontSize: 18, color: Colors.grey.shade600),
+//           ),
+//         ),
+//       );
+//     }
+
+//     final userId = ad['userId']?.toString() ?? 'Unknown User';
+//     final title = ad['title']?.toString() ?? 'Ad Details';
+//     final category = ad['category']?.toString();
+//     final place = ad['place']?.toString();
+//     final condition = ad['condition']?.toString();
+//     final price = ad['price'] != null ? "₹${ad['price']}" : "Not specified";
+
+//     // ✅ FIX 1: Safely cast the list and filter out null/empty strings immediately.
+//     final rawImages = ad['images'] as List<dynamic>? ?? [];
+//     final images = rawImages
+//         .map((e) => e?.toString() ?? '')
+//         .where((s) => s.isNotEmpty)
+//         .toList();
+
+//     final status = ad['status']?.toString() ?? '-';
+//     final type = ad['type']?.toString() ?? 'Unknown';
+//     final durationDays = ad['durationDays']?.toString() ?? '30';
+//     final description =
+//         ad['description']?.toString() ?? 'No description provided.';
+//     final contact = ad['contact']?.toString();
+
+//     final currentUser = FirebaseAuth.instance.currentUser;
+
+//     return Scaffold(
+//       backgroundColor: Colors.grey.shade50,
+//       appBar: AppBar(
+//         backgroundColor: AppTheme.primary,
+//         foregroundColor: AppTheme.iconOnPrimary,
+//         elevation: 4,
+//         title: Text(
+//           title,
+//           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
+//         ),
+//         actions: [
+//           // Save/Unsave button
+//           IconButton(
+//             onPressed: () async {
+//               final currentUser = FirebaseAuth.instance.currentUser;
+//               if (currentUser == null) {
+//                 showDialog(
+//                   context: context,
+//                   builder: (ctx) => AlertDialog(
+//                     title: const Text("Sign in required"),
+//                     content: const Text(
+//                       "To save this ad, please sign in or continue as guest.",
+//                     ),
+//                     actions: [
+//                       TextButton(
+//                         onPressed: () => Navigator.pop(ctx),
+//                         child: const Text("Cancel"),
+//                       ),
+//                       ElevatedButton(
+//                         onPressed: () {
+//                           Navigator.pop(ctx);
+//                           // TODO: navigate to sign-in
+//                         },
+//                         child: const Text("Sign In"),
+//                       ),
+//                     ],
+//                   ),
+//                 );
+//                 return;
+//               }
+
+//               try {
+//                 final savedRef = FirebaseFirestore.instance
+//                     .collection('users')
+//                     .doc(currentUser.uid)
+//                     .collection('saved_ads')
+//                     .doc(adDoc.id);
+
+//                 final docSnapshot = await savedRef.get();
+//                 if (docSnapshot.exists) {
+//                   await savedRef.delete();
+//                   if (context.mounted) {
+//                     ScaffoldMessenger.of(context).showSnackBar(
+//                       const SnackBar(content: Text("Ad removed from saved.")),
+//                     );
+//                   }
+//                 } else {
+//                   await savedRef.set({
+//                     'adId': adDoc.id,
+//                     'title': ad['title'] ?? '',
+//                     'category': ad['category'] ?? '',
+//                     'place': ad['place'] ?? '',
+//                     'images': ad['images'] ?? [],
+//                     'savedAt': FieldValue.serverTimestamp(),
+//                   });
+//                   if (context.mounted) {
+//                     ScaffoldMessenger.of(context).showSnackBar(
+//                       const SnackBar(content: Text("Ad saved successfully.")),
+//                     );
+//                   }
+//                 }
+//               } catch (e) {
+//                 debugPrint("Error saving ad: $e");
+//                 if (context.mounted) {
+//                   ScaffoldMessenger.of(context).showSnackBar(
+//                     const SnackBar(content: Text("Failed to save the ad.")),
+//                   );
+//                 }
+//               }
+//             },
+//             icon: const Icon(Icons.bookmark),
+//             tooltip: 'Save/Unsave',
+//           ),
+
+//           // Share
+//           IconButton(
+//             icon: const Icon(Icons.share),
+//             tooltip: 'Share',
+//             onPressed: () async {
+//               final safeTitle = title.replaceAll('"', "'");
+//               final shareText =
+//                   'Check out this ad "$safeTitle" on KMG app: https://kmg.example.com/ad/${adDoc.id}';
+
+//               if (kIsWeb) {
+//                 if (context.mounted) {
+//                   ScaffoldMessenger.of(context).showSnackBar(
+//                     const SnackBar(
+//                       content: Text("Sharing is not supported on web."),
+//                     ),
+//                   );
+//                 }
+//                 return;
+//               }
+
+//               try {
+//                 await Share.share(shareText, subject: 'Interesting Ad');
+//               } catch (e) {
+//                 debugPrint("Share failed: $e");
+//                 if (context.mounted) {
+//                   ScaffoldMessenger.of(context).showSnackBar(
+//                     const SnackBar(content: Text("Unable to share this ad.")),
+//                   );
+//                 }
+//               }
+//             },
+//           ),
+
+//           // Admin options
+//           if (isAdmin)
+//             PopupMenuButton<String>(
+//               color: AppTheme.background,
+//               onSelected: (value) async {
+//                 if (value == 'edit') {
+//                   Navigator.push(
+//                     context,
+//                     MaterialPageRoute(
+//                       builder: (_) => AddClassifiedFAB(
+//                         type: type,
+//                         userId: userId,
+//                         adId: adDoc.id,
+//                       ),
+//                     ),
+//                   );
+//                 } else if (value == 'extend') {
+//                   _showExtendDialog(context, adDoc.id, ad);
+//                 } else if (value == 'delete') {
+//                   final confirm = await showDialog<bool>(
+//                     context: context,
+//                     builder: (ctx) => AlertDialog(
+//                       title: const Text("Confirm Delete"),
+//                       content: const Text("Are you sure you want to delete?"),
+//                       actions: [
+//                         TextButton(
+//                           onPressed: () => Navigator.pop(ctx, false),
+//                           child: const Text("Cancel"),
+//                         ),
+//                         ElevatedButton(
+//                           onPressed: () => Navigator.pop(ctx, true),
+//                           child: const Text("Delete"),
+//                         ),
+//                       ],
+//                     ),
+//                   );
+
+//                   if (confirm == true) {
+//                     await FirebaseFirestore.instance
+//                         .collection("classifieds")
+//                         .doc(adDoc.id)
+//                         .delete();
+//                     if (context.mounted) {
+//                       ScaffoldMessenger.of(context).showSnackBar(
+//                         const SnackBar(content: Text("Ad deleted.")),
+//                       );
+//                       Navigator.pop(context);
+//                     }
+//                   }
+//                 }
+//               },
+//               itemBuilder: (_) => const [
+//                 PopupMenuItem(value: "edit", child: Text("Edit")),
+//                 PopupMenuItem(value: "extend", child: Text("Extend")),
+//                 PopupMenuItem(
+//                   value: "delete",
+//                   child: Text("Delete", style: TextStyle(color: Colors.red)),
+//                 ),
+//               ],
+//             ),
+//         ],
+//       ),
+//       body: SingleChildScrollView(
+//         padding: const EdgeInsets.all(20),
+//         child: Column(
+//           crossAxisAlignment: CrossAxisAlignment.start,
+//           children: [
+//             /// ✅ Shared username widget
+//             UserNameFetcher(userId: userId),
+
+//             const SizedBox(height: 20),
+//             Text(
+//               title,
+//               style: const TextStyle(
+//                 fontSize: 28,
+//                 fontWeight: FontWeight.w800,
+//                 color: Colors.black87,
+//               ),
+//             ),
+//             const SizedBox(height: 16),
+
+//             if (images.isNotEmpty)
+//               SizedBox(
+//                 height: 220,
+//                 child: ListView.builder(
+//                   scrollDirection: Axis.horizontal,
+//                   itemCount: images.length,
+//                   itemBuilder: (context, index) {
+//                     final imageUrl = images[index];
+
+//                     // The image list is already filtered, but this check is a final safety net
+//                     // against any unexpected empty strings from the mapping process.
+//                     if (imageUrl.isEmpty) {
+//                       return const SizedBox.shrink();
+//                     }
+
+//                     return Padding(
+//                       padding: const EdgeInsets.only(right: 12),
+//                       child: GestureDetector(
+//                         onTap: () => _openImageViewer(context, imageUrl),
+
+//                         child: ClipRRect(
+//                           borderRadius: BorderRadius.circular(16),
+//                           child: Stack(
+//                             children: [
+//                               // Main image
+//                               Positioned.fill(
+//                                 child: Image.network(
+//                                   imageUrl,
+//                                   width: 300,
+//                                   height: 220,
+//                                   fit: BoxFit.cover,
+//                                   errorBuilder: (c, e, s) => Container(
+//                                     color: Colors.grey[300],
+//                                     width: 300,
+//                                     height: 220,
+//                                     child: const Icon(
+//                                       Icons.image_not_supported,
+//                                     ),
+//                                   ),
+//                                 ),
+//                               ),
+
+//                               // ✅ Watermark
+//                               Positioned(
+//                                 bottom: 8,
+//                                 left: 8,
+//                                 child: Container(
+//                                   padding: const EdgeInsets.symmetric(
+//                                     horizontal: 6,
+//                                     vertical: 2,
+//                                   ),
+//                                   decoration: BoxDecoration(
+//                                     color: Colors.black.withOpacity(0.4),
+//                                     borderRadius: BorderRadius.circular(6),
+//                                   ),
+//                                   child: const Text(
+//                                     "KMG",
+//                                     style: TextStyle(
+//                                       color: Colors.white,
+//                                       fontSize: 14,
+//                                       fontWeight: FontWeight.bold,
+//                                       letterSpacing: 1.2,
+//                                     ),
+//                                   ),
+//                                 ),
+//                               ),
+//                             ],
+//                           ),
+//                         ),
+//                       ),
+//                     );
+//                   },
+//                 ),
+//               ),
+
+//             const SizedBox(height: 20),
+//             Text(
+//               description,
+//               style: TextStyle(
+//                 fontSize: 16,
+//                 color: Colors.grey[700],
+//                 height: 1.5,
+//               ),
+//             ),
+//             const SizedBox(height: 24),
+
+//             Text(
+//               "Specifications",
+//               style: TextStyle(
+//                 fontSize: 20,
+//                 fontWeight: FontWeight.bold,
+//                 color: AppTheme.primary.withOpacity(0.9),
+//               ),
+//             ),
+//             const SizedBox(height: 12),
+
+//             _buildDetailRow("Category", category),
+//             _buildDetailRow("Place", place),
+//             _buildDetailRow("Condition", condition),
+//             _buildDetailRow("Price", price, isPrice: true),
+//             if (postedDate != null)
+//               _buildDetailRow(
+//                 "Posted On",
+//                 DateFormat('yyyy-MM-dd').format(postedDate),
+//               ),
+//             if (isAdmin) _buildDetailRow("Duration (days)", durationDays),
+//             if (isAdmin) _buildDetailRow("Status", status),
+//             if (expiryDate != null && isAdmin)
+//               _buildDetailRow(
+//                 "Expiry Date",
+//                 DateFormat('yyyy-MM-dd').format(expiryDate),
+//                 isExpiry: true,
+//               ),
+
+//             const SizedBox(height: 20),
+
+//             if (!isAdmin && contact != null)
+//               Center(
+//                 child: Row(
+//                   mainAxisSize: MainAxisSize.min,
+//                   children: [
+//                     _buildActionButton(
+//                       label: "Call Now",
+//                       icon: Icons.call,
+//                       onPressed: () => launchUrl(Uri.parse('tel:$contact')),
+//                     ),
+//                     const SizedBox(width: 16),
+//                     _buildActionButton(
+//                       label: "Chat on WhatsApp",
+//                       icon: Icons.chat,
+//                       onPressed: () => launchUrl(
+//                         Uri.parse(
+//                           'https://wa.me/$contact?text=Hello%20I%20saw%20your%20ad%20"$title"%20on%20KMG.',
+//                         ),
+//                       ),
+//                     ),
+//                   ],
+//                 ),
+//               ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+
+//   // --- helpers ---
+
+//   void _openImageViewer(BuildContext context, String imageUrl) {
+//     // FIX: Add null/empty check here too, in case the thumbnail list was filtered
+//     if (imageUrl.isEmpty) return;
+
+//     Navigator.push(
+//       context,
+//       MaterialPageRoute(
+//         builder: (_) => Scaffold(
+//           backgroundColor: Colors.black,
+//           body: Stack(
+//             children: [
+//               Center(child: InteractiveViewer(child: Image.network(imageUrl))),
+//               Positioned(
+//                 top: 40,
+//                 right: 20,
+//                 child: IconButton(
+//                   icon: const Icon(Icons.close, color: Colors.white, size: 30),
+//                   onPressed: () => Navigator.pop(context),
+//                 ),
+//               ),
+//             ],
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+
+//   Widget _buildActionButton({
+//     required String label,
+//     required IconData icon,
+//     required VoidCallback onPressed,
+//   }) {
+//     // ... (rest of helper functions unchanged)
+//     return Container(
+//       decoration: BoxDecoration(
+//         gradient: AppTheme.primaryGradient,
+//         borderRadius: BorderRadius.circular(30),
+//       ),
+//       child: ElevatedButton.icon(
+//         onPressed: onPressed,
+//         style: ElevatedButton.styleFrom(
+//           backgroundColor: Colors.transparent,
+//           shadowColor: Colors.transparent,
+//           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+//         ),
+//         icon: Icon(icon, color: AppTheme.iconOnPrimary),
+//         label: Text(
+//           label,
+//           style: const TextStyle(
+//             color: Colors.white,
+//             fontWeight: FontWeight.bold,
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+
+//   Widget _buildDetailRow(
+//     String label,
+//     String? value, {
+//     bool isPrice = false,
+//     bool isExpiry = false,
+//   }) {
+//     Color color = Colors.black87;
+//     FontWeight weight = FontWeight.w500;
+
+//     if (isPrice) {
+//       color = AppTheme.secondary;
+//       weight = FontWeight.w800;
+//     } else if (isExpiry) {
+//       color = Colors.red.shade700;
+//     }
+
+//     return Container(
+//       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+//       margin: const EdgeInsets.only(bottom: 6),
+//       decoration: BoxDecoration(
+//         color: AppTheme.background,
+//         borderRadius: BorderRadius.circular(12),
+//       ),
+//       child: Row(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           SizedBox(
+//             width: 120,
+//             child: Text(
+//               "$label:",
+//               style: const TextStyle(
+//                 fontWeight: FontWeight.w600,
+//                 color: Colors.black,
+//                 fontSize: 16,
+//               ),
+//             ),
+//           ),
+//           Expanded(
+//             child: Text(
+//               value ?? "-",
+//               style: TextStyle(color: color, fontSize: 16, fontWeight: weight),
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+
+//   void _showExtendDialog(
+//     BuildContext context,
+//     String adId,
+//     Map<String, dynamic> ad,
+//   ) {
+//     int extendDays = 7;
+//     showDialog(
+//       context: context,
+//       builder: (ctx) => StatefulBuilder(
+//         builder: (ctx, setStateDialog) => AlertDialog(
+//           title: Text("Extend ${ad['title'] ?? 'Ad'}"),
+//           content: DropdownButton<int>(
+//             value: extendDays,
+//             items: [7, 15, 30]
+//                 .map((e) => DropdownMenuItem(value: e, child: Text("$e days")))
+//                 .toList(),
+//             onChanged: (val) => setStateDialog(() => extendDays = val!),
+//           ),
+//           actions: [
+//             TextButton(
+//               onPressed: () => Navigator.pop(ctx),
+//               child: const Text("Cancel"),
+//             ),
+//             ElevatedButton(
+//               onPressed: () async {
+//                 final oldExpiry = ad["expiryDate"] as Timestamp?;
+//                 final currentExpiry = oldExpiry?.toDate() ?? DateTime.now();
+//                 final newExpiry = currentExpiry.add(Duration(days: extendDays));
+
+//                 await FirebaseFirestore.instance
+//                     .collection("classifieds")
+//                     .doc(adId)
+//                     .update({"expiryDate": newExpiry});
+//                 if (context.mounted) {
+//                   ScaffoldMessenger.of(context).showSnackBar(
+//                     SnackBar(
+//                       content: Text(
+//                         "Ad extended by $extendDays days successfully.",
+//                       ),
+//                     ),
+//                   );
+//                   Navigator.pop(ctx);
+//                 }
+//               },
+//               child: const Text("Extend"),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }

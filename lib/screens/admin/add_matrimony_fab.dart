@@ -399,7 +399,6 @@ class _AddMatrimonyFABState extends State<AddMatrimonyFAB> {
         minHeight: 800,
         quality: 80,
       );
-      if (compressedBytes == null) return null;
 
       final dir = await getTemporaryDirectory();
       final targetPath = path.join(
@@ -407,7 +406,7 @@ class _AddMatrimonyFABState extends State<AddMatrimonyFAB> {
         "compressed_${DateTime.now().millisecondsSinceEpoch}.jpg",
       );
       final compressedFile = File(targetPath);
-      await compressedFile.writeAsBytes(compressedBytes);
+      // await compressedFile.writeAsBytes(compressedBytes);-----------------------------------------------------------
       return compressedFile;
     } catch (e) {
       debugPrint("Image compression failed: $e");

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:kmg/screens/settings/sign_up_screen.dart';
 
 class SignInScreen extends StatefulWidget {
-  const SignInScreen({super.key});
+  const SignInScreen({super.key, required bool fromFab});
 
   @override
   State<SignInScreen> createState() => _SignInScreenState();
@@ -88,6 +89,21 @@ class _SignInScreenState extends State<SignInScreen> {
                     ElevatedButton(
                       onPressed: _signIn,
                       child: const Text("Sign In"),
+                    ),
+
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const SignUpScreen(fromFab: true),
+                            ),
+                          );
+                        });
+                      },
+                      child: const Text("Sign Up"),
                     ),
                   ],
                 ),

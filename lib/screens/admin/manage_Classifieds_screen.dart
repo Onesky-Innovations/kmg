@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:kmg/screens/admin/AddBannerFAB.dart';
+import 'package:kmg/screens/ads/ad_detail_screen.dart';
 import 'Add_Classified_FAB.dart';
 // import 'Add_Banner_FAB.dart'; // ✅ Import your banner FAB
-import '../ads/ad_detail_screen.dart';
 
 class ManageClassifiedsScreen extends StatefulWidget {
   const ManageClassifiedsScreen({super.key});

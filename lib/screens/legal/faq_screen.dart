@@ -19,7 +19,7 @@ class _FAQScreenState extends State<FAQScreen> {
     {
       "question": "2. How do I create an account?",
       "answer":
-          "You can create an account using your email and password. Provide accurate information such as name, age, and contact details.",
+          "You can create an account using your email and password. Provide accurate information such as name, email,place, and contact details.",
     },
     {
       "question": "3. How can I delete my account?",

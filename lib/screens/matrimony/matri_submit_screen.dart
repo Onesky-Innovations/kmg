@@ -214,7 +214,7 @@ class _MatriSubmitScreenState extends State<MatriSubmitScreen> {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12),
         child: DropdownButtonFormField<String>(
-          value: _selectedProfileFor,
+          initialValue: _selectedProfileFor,
           decoration: const InputDecoration(
             labelText: "Create Profile For",
             border: InputBorder.none,

@@ -223,7 +223,8 @@ class AdminDashboardScreen extends StatelessWidget {
                   _DashboardTile(
                     icon: Icons.message,
                     title: "Messages",
-                    onTap: () => Navigator.pushNamed(context, "/messages"),
+                    onTap: () =>
+                        Navigator.pushNamed(context, "/delete_request"),
                   ),
                   _DashboardTile(
                     icon: Icons.article,

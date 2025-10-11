@@ -1,8 +1,11 @@
 import 'package:circle_bottom_navigation/circle_bottom_navigation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:kmg/screens/ads/BannerDetailScreen.dart';
+import 'package:kmg/screens/ads/Pre_add_submit_screen.dart';
 import 'package:kmg/screens/settings/profile_screen.dart';
+import 'package:kmg/screens/settings/sign_in_screen.dart';
 import 'package:kmg/theme/app_theme.dart';
 import 'package:kmg/widgets/custom_app_bar.dart';
 import 'package:kmg/widgets/category_chips.dart';
@@ -36,7 +39,49 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   void _onTabChanged(int index) => setState(() => _currentIndex = index);
 
-  void _onFabPressed() => Navigator.pushNamed(context, "/submitAd");
+  void _onFabPressed() {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const PreAddSubmitScreen()),
+      );
+    } else {
+      // Show a friendly dialog to sign up
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text("Sign in required"),
+          content: const Text(
+            "You need to sign up or log in to submit your ad.",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const SignInScreen(fromFab: true),
+                    ),
+                  );
+                });
+              },
+              child: const Text("Sign In/Sign Up"),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  // void _onFabPressed() => Navigator.pushNamed(context, "/PreAdsubmit");
 
   void _onSearchChanged(String query) => setState(() => _searchQuery = query);
 
@@ -137,7 +182,8 @@ class _DashboardScreenState extends State<DashboardScreen>
               body: AdsFeedScreen(
                 selectedCategory: _selectedCategory,
                 searchQuery: _searchQuery,
-                selectedPlace: _selectedPlace, // <-- pass to feed
+                selectedPlace: _selectedPlace,
+                currentUserId: '', // <-- pass to feed
               ),
             )
           : _getPage(_currentIndex),

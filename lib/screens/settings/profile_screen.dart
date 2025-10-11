@@ -92,7 +92,7 @@
 //   void _login() async {
 //     final result = await Navigator.push(
 //       context,
-//       MaterialPageRoute(builder: (_) => const SignInScreen()),
+//       MaterialPageRoute(builder: (_) => const SignInScreen(fromFab: false)),
 //     );
 
 //     if (result != null && result['signedIn'] == true) {
@@ -113,7 +113,7 @@
 //   void _signup() async {
 //     final result = await Navigator.push(
 //       context,
-//       MaterialPageRoute(builder: (_) => const SignUpScreen()),
+//       MaterialPageRoute(builder: (_) => const SignUpScreen(fromFab: false)),
 //     );
 
 //     if (result == true) await _fetchUser();
@@ -316,6 +316,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:kmg/screens/ads/MyAdsScreen.dart';
 import 'package:kmg/screens/legal/contact_support_screen.dart';
 import 'package:kmg/screens/legal/privacy_screen.dart';
 import 'package:kmg/screens/legal/terms_screen.dart';
@@ -410,7 +411,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _login() async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const SignInScreen()),
+      MaterialPageRoute(builder: (_) => const SignInScreen(fromFab: false)),
     );
 
     if (result != null && result['signedIn'] == true) {
@@ -431,7 +432,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _signup() async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const SignUpScreen()),
+      MaterialPageRoute(builder: (_) => const SignUpScreen(fromFab: false)),
     );
 
     if (result == true) await _fetchUser();
@@ -607,6 +608,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => const Saveditems()),
+                      ),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.bookmark),
+                      title: const Text("My Ads"),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const MyAdsScreen()),
                       ),
                     ),
                     ListTile(

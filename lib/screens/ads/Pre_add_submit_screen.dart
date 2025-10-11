@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class AddSubmitScreen extends StatefulWidget {
-  const AddSubmitScreen({super.key});
+class PreAddSubmitScreen extends StatefulWidget {
+  const PreAddSubmitScreen({super.key});
 
   @override
-  State<AddSubmitScreen> createState() => _AddSubmitScreenState();
+  State<PreAddSubmitScreen> createState() => _AddSubmitScreenState();
 }
 
-class _AddSubmitScreenState extends State<AddSubmitScreen> {
+class _AddSubmitScreenState extends State<PreAddSubmitScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _priceController = TextEditingController();

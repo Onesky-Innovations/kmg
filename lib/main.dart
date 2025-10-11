@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:kmg/screens/admin/admin_dashboard_screen.dart';
+import 'package:kmg/screens/admin/delete_requests_admin_page.dart';
 import 'package:kmg/screens/admin/manageMatrimony.dart';
 import 'package:kmg/screens/admin/notifications_screen.dart';
 import 'firebase_options.dart';
@@ -8,7 +9,7 @@ import 'firebase_options.dart';
 import 'screens/landing/landing_screen.dart';
 import 'screens/dashboard/dashboard_screen.dart';
 import 'screens/know_more/know_more_screen.dart';
-import 'screens/ads/add_submit_screen.dart';
+import 'screens/ads/Pre_add_submit_screen.dart';
 import 'screens/matrimony/matri_submit_screen.dart';
 import 'screens/settings/profile_screen.dart';
 import 'screens/admin/manage_Classifieds_screen.dart';
@@ -56,7 +57,7 @@ class MyApp extends StatelessWidget {
       routes: {
         "/dashboard": (context) => const DashboardScreen(),
         "/knowmore": (context) => const KnowMoreScreen(),
-        "/submitAd": (context) => const AddSubmitScreen(),
+        "/preadsubmit": (context) => const PreAddSubmitScreen(),
         "/home": (context) => const DashboardScreen(),
         "/matrimony": (context) => const MatriSubmitScreen(),
         "/profile": (context) => const ProfileScreen(),
@@ -64,6 +65,7 @@ class MyApp extends StatelessWidget {
         "/manageMatrimony": (context) => const ManageMatrimonyScreen(),
         "/adminDashboard": (context) => const AdminDashboardScreen(),
         "/notifications": (context) => const AddNotificationScreen(),
+        "/delete_request": (context) => const DeleteRequestsAdminPage(),
       },
     );
   }

@@ -2832,7 +2832,7 @@ class _MatrimonyScreenState extends State<MatrimonyScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         itemCount: _favorites.length,
         itemBuilder: (context, index) {
-          final profileId = _favorites[index]?.toString() ?? '';
+          final profileId = _favorites[index].toString() ?? '';
           if (profileId.isEmpty) return const SizedBox.shrink();
 
           final profile = _recentlyViewed.firstWhere(
