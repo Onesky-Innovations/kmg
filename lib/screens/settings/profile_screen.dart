@@ -569,7 +569,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => const ContactSupportScreen(),
+                            builder: (_) => ContactSupportScreen('general'),
                           ),
                         );
                       },
@@ -607,11 +607,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       title: const Text("Saved Items"),
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const Saveditems()),
+                        MaterialPageRoute(
+                          builder: (_) => const SavedItemsScreen(),
+                        ),
                       ),
                     ),
                     ListTile(
-                      leading: const Icon(Icons.bookmark),
+                      leading: const Icon(Icons.ads_click),
                       title: const Text("My Ads"),
                       onTap: () => Navigator.push(
                         context,

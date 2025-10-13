@@ -563,6 +563,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:kmg/screens/admin/Add_Classified_FAB.dart';
+import 'package:kmg/screens/settings/sign_in_screen.dart';
 import 'package:kmg/utils/user_name_fetcher.dart' as user_utils;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:kmg/theme/app_theme.dart';
@@ -592,6 +593,9 @@ class AdDetailScreen extends StatelessWidget {
     final postedDate = ad['postedAt'] != null
         ? (ad['postedAt'] as Timestamp).toDate()
         : null;
+
+    final soldStatus = (ad['soldStatus'] ?? 'unsold').toString();
+    final isSold = soldStatus == 'sold';
 
     if (!isAdmin && (ad['type'] ?? '') == 'Banner') {
       return Scaffold(
@@ -632,19 +636,83 @@ class AdDetailScreen extends StatelessWidget {
           title,
           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
         ),
+
+        // Save/Unsave
         actions: [
-          // Save/Unsave
-          IconButton(
-            onPressed: () async {
-              final currentUser = FirebaseAuth.instance.currentUser;
-              if (currentUser == null) {
+          if (isSignedIn)
+            StreamBuilder<DocumentSnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(currentUser!.uid)
+                  .collection('saved_ads')
+                  .doc(adDoc.id)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                final isSaved = snapshot.data?.exists ?? false;
+                return IconButton(
+                  icon: Icon(
+                    isSaved ? Icons.bookmark : Icons.bookmark_border,
+                    color: isSaved ? Colors.yellow.shade700 : Colors.white,
+                  ),
+                  tooltip: isSaved ? 'Remove from saved' : 'Save this ad',
+                  onPressed: () async {
+                    try {
+                      final savedRef = FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(currentUser.uid)
+                          .collection('saved_ads')
+                          .doc(adDoc.id);
+
+                      if (isSaved) {
+                        await savedRef.delete();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Ad removed from saved."),
+                            ),
+                          );
+                        }
+                      } else {
+                        await savedRef.set({
+                          'adId': adDoc.id,
+                          'title': ad['title'] ?? '',
+                          'category': ad['category'] ?? '',
+                          'place': ad['place'] ?? '',
+                          'images': ad['images'] ?? [],
+                          'savedAt': FieldValue.serverTimestamp(),
+                        });
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Ad saved successfully."),
+                            ),
+                          );
+                        }
+                      }
+                    } catch (e, st) {
+                      debugPrint("Error saving ad: $e\n$st");
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("Failed to save the ad."),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                );
+              },
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.bookmark_border),
+              tooltip: 'Save this ad',
+              onPressed: () {
                 showDialog(
                   context: context,
                   builder: (ctx) => AlertDialog(
                     title: const Text("Sign in required"),
-                    content: const Text(
-                      "To save this ad, please sign in or continue as guest.",
-                    ),
+                    content: const Text("To save this ad, please sign in."),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(ctx),
@@ -653,59 +721,22 @@ class AdDetailScreen extends StatelessWidget {
                       ElevatedButton(
                         onPressed: () {
                           Navigator.pop(ctx);
-                          // TODO: Navigate to sign-in page
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  const SignInScreen(fromFab: false),
+                            ),
+                          );
+                          // ✅ link to SignInScreen
                         },
                         child: const Text("Sign In"),
                       ),
                     ],
                   ),
                 );
-                return;
-              }
-
-              try {
-                final savedRef = FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(currentUser.uid)
-                    .collection('saved_ads')
-                    .doc(adDoc.id);
-
-                final docSnapshot = await savedRef.get();
-
-                if (docSnapshot.exists) {
-                  await savedRef.delete();
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Ad removed from saved.")),
-                    );
-                  }
-                } else {
-                  await savedRef.set({
-                    'adId': adDoc.id,
-                    'title': ad['title'] ?? '',
-                    'category': ad['category'] ?? '',
-                    'place': ad['place'] ?? '',
-                    'images': ad['images'] ?? [],
-                    'savedAt': FieldValue.serverTimestamp(),
-                  });
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Ad saved successfully.")),
-                    );
-                  }
-                }
-              } catch (e, st) {
-                debugPrint("Error saving ad: $e\n$st");
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Failed to save the ad.")),
-                  );
-                }
-              }
-            },
-            icon: const Icon(Icons.bookmark),
-            tooltip: 'Save/Unsave',
-          ),
+              },
+            ),
 
           // Share
           IconButton(
@@ -916,9 +947,9 @@ class AdDetailScreen extends StatelessWidget {
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   itemCount: images.length,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                  ), // centers list
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+
+                  // centers list
                   itemBuilder: (context, index) {
                     final imageUrl = images[index];
                     return Center(
@@ -947,6 +978,7 @@ class AdDetailScreen extends StatelessWidget {
                                         ),
                                       ),
                                     ),
+
                                     // ✅ Watermark on both corners in full screen
                                     Positioned.fill(
                                       child: Align(
@@ -1054,6 +1086,32 @@ class AdDetailScreen extends StatelessWidget {
                                 ),
                               ),
                             ),
+                            if (isSold)
+                              Positioned(
+                                top: 0, // Position at the top
+                                left: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.shade700,
+                                    borderRadius: const BorderRadius.only(
+                                      topLeft: Radius.circular(16),
+                                      bottomRight: Radius.circular(16),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'SOLD',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 18,
+                                    ),
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                       ),

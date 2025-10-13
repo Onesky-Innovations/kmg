@@ -219,7 +219,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:kmg/screens/ads/BannerDetailScreen.dart';
-// import 'package:kmg/screens/ads/banner_detail_screen.dart'; // ✅ Use correct path
 
 class AutoScrollAd extends StatefulWidget {
   final double height;
@@ -268,9 +267,7 @@ class _AutoScrollAdState extends State<AutoScrollAd> {
       height: widget.height,
       child: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
-            .collection("classifieds")
-            .doc("baners")
-            .collection("baner")
+            .collection("banners")
             .orderBy("createdAt", descending: true)
             .snapshots(),
         builder: (context, snapshot) {
@@ -280,6 +277,12 @@ class _AutoScrollAdState extends State<AutoScrollAd> {
 
           final docs = snapshot.data?.docs ?? [];
 
+          // ✅ FIX: Check if the database returned zero documents immediately
+          if (docs.isEmpty) {
+            return const Center(child: Text("No banners available"));
+          }
+          // ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^
+
           // Filter out banners without images
           final bannersWithImages = docs.where((doc) {
             final ad = doc.data() as Map<String, dynamic>;
@@ -287,6 +290,7 @@ class _AutoScrollAdState extends State<AutoScrollAd> {
             return images.isNotEmpty;
           }).toList();
 
+          // Check if no banners remain after filtering by images
           if (bannersWithImages.isEmpty) {
             return const Center(child: Text("No banners available"));
           }

@@ -2983,7 +2983,9 @@ class _MatrimonyScreenState extends State<MatrimonyScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const ContactSupportScreen(),
+                  builder: (context) => ContactSupportScreen(
+                    _loggedInUser?['id']?.toString() ?? '',
+                  ),
                 ),
               );
             },
@@ -3069,7 +3071,7 @@ class _MatrimonyScreenState extends State<MatrimonyScreen> {
                             context,
                             MaterialPageRoute(
                               builder: (context) =>
-                                  const ContactSupportScreen(),
+                                  const ContactSupportScreen('general'),
                             ),
                           );
                         },

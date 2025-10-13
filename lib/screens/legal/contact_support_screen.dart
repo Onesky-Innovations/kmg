@@ -3,7 +3,7 @@ import 'package:kmg/theme/app_theme.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ContactSupportScreen extends StatelessWidget {
-  const ContactSupportScreen({super.key});
+  const ContactSupportScreen(String adId, {super.key});
 
   // Contact Information (UNCHANGED as requested)
   final String whatsappNumber = "+919744422238";

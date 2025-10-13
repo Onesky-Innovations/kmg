@@ -12,7 +12,7 @@ import 'package:kmg/widgets/category_chips.dart';
 import 'package:kmg/widgets/auto_scroll_ad.dart';
 
 import '../ads/ads_feed_screen.dart';
-import '../saved/featured.dart';
+import '../ads/featured.dart';
 import '../matrimony/matrimony_screen.dart';
 import 'package:circle_bottom_navigation/widgets/tab_data.dart';
 
@@ -81,8 +81,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     }
   }
 
-  // void _onFabPressed() => Navigator.pushNamed(context, "/PreAdsubmit");
-
   void _onSearchChanged(String query) => setState(() => _searchQuery = query);
 
   void _onPlaceSelected(String place) => setState(() => _selectedPlace = place);
@@ -100,84 +98,85 @@ class _DashboardScreenState extends State<DashboardScreen>
           : null,
       body: _currentIndex == 0
           ? NestedScrollView(
-              headerSliverBuilder:
-                  (BuildContext context, bool innerBoxIsScrolled) {
-                    return <Widget>[
-                      const SliverToBoxAdapter(child: SizedBox(height: 5)),
+              headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+                return <Widget>[
+                  const SliverToBoxAdapter(child: SizedBox(height: 5)),
 
-                      // Category Chips
-                      SliverToBoxAdapter(
-                        child: CategoryChips(
-                          selectedCategory: _selectedCategory,
-                          onCategorySelected: (category) =>
-                              setState(() => _selectedCategory = category),
-                        ),
-                      ),
+                  // Category Chips
+                  SliverToBoxAdapter(
+                    child: CategoryChips(
+                      selectedCategory: _selectedCategory,
+                      onCategorySelected: (category) =>
+                          setState(() => _selectedCategory = category),
+                    ),
+                  ),
 
-                      // Auto scrolling ads
-                      SliverToBoxAdapter(
-                        child: StreamBuilder<QuerySnapshot>(
-                          stream: FirebaseFirestore.instance
-                              .collection('classifieds')
-                              .doc('baners')
-                              .collection('baner')
-                              .orderBy('createdAt', descending: true)
-                              .snapshots(),
-                          builder: (context, snapshot) {
-                            if (!snapshot.hasData) {
-                              return const SizedBox(
-                                height: 150,
-                                child: Center(
-                                  child: CircularProgressIndicator(),
+                  // Auto scrolling ads
+                  SliverToBoxAdapter(
+                    child: StreamBuilder<QuerySnapshot>(
+                      // V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V
+                      // ✅ FIX: Use the new root collection 'banners'
+                      stream: FirebaseFirestore.instance
+                          .collection(
+                            'banners',
+                          ) // <-- CHANGED from classifieds/baners/baner
+                          .orderBy('createdAt', descending: true)
+                          .snapshots(),
+                      // ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) {
+                          return const SizedBox(
+                            height: 150,
+                            child: Center(child: CircularProgressIndicator()),
+                          );
+                        }
+
+                        final bannerDocs = snapshot.data!.docs;
+                        if (bannerDocs.isEmpty) {
+                          return const SizedBox(
+                            height: 150,
+                            child: Center(child: Text("No banners found")),
+                          );
+                        }
+
+                        // NOTE: You are passing the raw bannerDocs to AutoScrollAd
+                        // The actual image filtering and UI logic is done inside
+                        // the AutoScrollAd widget itself, which is correct.
+                        return AutoScrollAd(
+                          height: 150,
+                          ads: bannerDocs,
+                          onTap: (index) {
+                            final data =
+                                bannerDocs[index].data()
+                                    as Map<String, dynamic>;
+                            final images =
+                                data['images'] as List<dynamic>? ?? [];
+                            final imageUrl = images.isNotEmpty ? images[0] : '';
+
+                            final description = data['description'] ?? '';
+                            final phone = data['phone'] ?? '';
+
+                            if (imageUrl.isNotEmpty) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => BannerDetailScreen(
+                                    imageUrl: imageUrl,
+                                    description: description,
+                                    phone: phone,
+                                  ),
                                 ),
                               );
                             }
-
-                            final bannerDocs = snapshot.data!.docs;
-                            if (bannerDocs.isEmpty) {
-                              return const SizedBox(
-                                height: 150,
-                                child: Center(child: Text("No banners found")),
-                              );
-                            }
-
-                            return AutoScrollAd(
-                              height: 150,
-                              ads: bannerDocs,
-                              onTap: (index) {
-                                final data =
-                                    bannerDocs[index].data()
-                                        as Map<String, dynamic>;
-                                final images =
-                                    data['images'] as List<dynamic>? ?? [];
-                                final imageUrl = images.isNotEmpty
-                                    ? images[0]
-                                    : '';
-
-                                final description = data['description'] ?? '';
-                                final phone = data['phone'] ?? '';
-
-                                if (imageUrl.isNotEmpty) {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => BannerDetailScreen(
-                                        imageUrl: imageUrl,
-                                        description: description,
-                                        phone: phone,
-                                      ),
-                                    ),
-                                  );
-                                }
-                              },
-                            );
                           },
-                        ),
-                      ),
+                        );
+                      },
+                    ),
+                  ),
 
-                      const SliverToBoxAdapter(child: SizedBox(height: 10)),
-                    ];
-                  },
+                  const SliverToBoxAdapter(child: SizedBox(height: 10)),
+                ];
+              },
 
               body: AdsFeedScreen(
                 selectedCategory: _selectedCategory,

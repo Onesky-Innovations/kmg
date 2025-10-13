@@ -15,8 +15,8 @@ class _AnimatedSearchBarState extends State<AnimatedSearchBar> {
   final List<String> _categories = [
     'used bikes',
     'land for sale',
-    'apartments for rent',
-    'mobile phones',
+    'apartments for rent...',
+    'mobile phones...',
   ];
 
   int _currentIndex = 0;

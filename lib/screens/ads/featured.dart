@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:kmg/screens/ads/BannerDetailScreen.dart';
 import 'package:kmg/screens/ads/ad_detail_screen.dart';
-import 'package:kmg/widgets/auto_scroll_ad.dart';
+import 'package:kmg/widgets/auto_scroll_ad.dart'; // Ensure the path is correct
 
 class FeaturedScreen extends StatelessWidget {
   const FeaturedScreen({super.key});
@@ -16,14 +16,13 @@ class FeaturedScreen extends StatelessWidget {
         .where('isFeatured', isEqualTo: true)
         .snapshots();
 
+    // ✅ FIX: Query is now set to the top-level 'banners' collection
     final bannersStream = firestore
-        .collection('classifieds')
-        .doc('baners')
-        .collection('baner')
+        .collection('banners') // <--- CORRECTED COLLECTION PATH
         .orderBy("createdAt", descending: true)
         .snapshots();
 
-    // Maintain 1080:200 ratio (very wide & short)
+    // This is not used in the final build for the banner, but kept for context
     final bannerHeight = MediaQuery.of(context).size.width * 200 / 1080;
 
     return Scaffold(
@@ -42,19 +41,20 @@ class FeaturedScreen extends StatelessWidget {
             ),
             const SizedBox(height: 10),
 
-            // ✅ Fixed: Removed invalid SliverToBoxAdapter
+            // Use the correct bannersStream here
             StreamBuilder<QuerySnapshot>(
               stream: bannersStream,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
+                  // Using the calculated height for the loading indicator
                   return SizedBox(
                     height: bannerHeight,
-                    child: Center(child: CircularProgressIndicator()),
+                    child: const Center(child: CircularProgressIndicator()),
                   );
                 }
 
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return SizedBox(
+                  return const SizedBox(
                     height: 150,
                     child: Center(child: Text("No banners found")),
                   );
@@ -62,9 +62,10 @@ class FeaturedScreen extends StatelessWidget {
 
                 final bannerDocs = snapshot.data!.docs;
 
+                // Pass the fetched documents to AutoScrollAd
                 return AutoScrollAd(
                   height: 150,
-                  ads: bannerDocs,
+                  ads: bannerDocs, // ✅ PASSING THE CORRECT LIST
                   onTap: (index) {
                     final data =
                         bannerDocs[index].data() as Map<String, dynamic>;
@@ -99,6 +100,7 @@ class FeaturedScreen extends StatelessWidget {
             ),
             const SizedBox(height: 10),
 
+            // ... (The rest of your featured classifieds code remains here)
             StreamBuilder<QuerySnapshot>(
               stream: featuredClassifieds,
               builder: (context, snapshot) {

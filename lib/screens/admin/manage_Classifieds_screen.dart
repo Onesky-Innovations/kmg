@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+// Note: Ensure AddBannerFAB and Add_Classified_FAB are correctly imported
 import 'package:kmg/screens/admin/AddBannerFAB.dart';
 import 'package:kmg/screens/ads/ad_detail_screen.dart';
 import 'Add_Classified_FAB.dart';
-// import 'Add_Banner_FAB.dart'; // ✅ Import your banner FAB
 
 class ManageClassifiedsScreen extends StatefulWidget {
   const ManageClassifiedsScreen({super.key});
@@ -26,11 +26,26 @@ class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
   bool isLoading = true;
   bool isAdmin = false;
 
+  // State variable to hold the current search term (lowercase for filtering)
+  String _currentSearchTerm = '';
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabs.length, vsync: this);
     _fetchAdminStatus();
+
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  void _onSearchChanged() {
+    // Only update the state if the search term has actually changed
+    final newSearchTerm = _searchController.text.trim().toLowerCase();
+    if (_currentSearchTerm != newSearchTerm) {
+      setState(() {
+        _currentSearchTerm = newSearchTerm;
+      });
+    }
   }
 
   Future<void> _fetchAdminStatus() async {
@@ -53,8 +68,141 @@ class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
   @override
   void dispose() {
     _tabController.dispose();
+    _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     super.dispose();
+  }
+
+  // UPDATED Filtering logic for stability and efficiency
+  List<QueryDocumentSnapshot> _filterAds(
+    String tab,
+    List<QueryDocumentSnapshot> docs,
+  ) {
+    final now = DateTime.now();
+    final searchQuery = _currentSearchTerm;
+
+    return docs.where((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+
+      // Check if the document belongs to the 'banners' collection
+      final isBannerDoc = doc.reference.parent.id == "banners";
+
+      // --- Common Search Filter (applied to all documents) ---
+      final title = (data["title"] ?? "").toString().toLowerCase();
+      if (searchQuery.isNotEmpty && !title.contains(searchQuery)) {
+        return false;
+      }
+
+      // --- Tab-Specific Filtering Logic ---
+
+      if (tab == "Banners") {
+        // Only show Banners in the Banners tab
+        return isBannerDoc;
+      } else {
+        // Only show Classifieds in Active, Expired, and Featured tabs
+        if (isBannerDoc) {
+          return false; // Exclude banners from classifieds tabs
+        }
+
+        // Get expiry date safely
+        final expiryDate = data["expiryDate"] is Timestamp
+            ? (data["expiryDate"] as Timestamp).toDate()
+            : null;
+
+        // Tab filters for Classifieds
+        if (tab == "Active") {
+          return (data["status"] == "Active" || data["status"] == null) &&
+              expiryDate != null &&
+              expiryDate.isAfter(now);
+        }
+        if (tab == "Expired") {
+          // Includes ads explicitly marked Expired OR where the date has passed
+          final isExpiredByStatus = data["status"] == "Expired";
+          final isExpiredByDate =
+              expiryDate != null && expiryDate.isBefore(now);
+          return isExpiredByStatus || isExpiredByDate;
+        }
+        if (tab == "Featured") {
+          // Since the Stream for 'Featured' is now filtered server-side
+          // by where('isFeatured', isEqualTo: true), we just pass all docs
+          // that pass the search/banner check. This greatly reduces client work.
+          return true;
+        }
+      }
+
+      return !isBannerDoc; // Default for non-banner documents
+    }).toList();
+  }
+
+  // Helper function to build the ListTile for clarity
+  Widget _buildAdListTile(String tab, QueryDocumentSnapshot adDoc) {
+    final ad = adDoc.data() as Map<String, dynamic>;
+    final adId = adDoc.id;
+
+    final isBanner = adDoc.reference.parent.id == "banners";
+    final parentUserId = isBanner ? null : adDoc.reference.parent.parent?.id;
+
+    // Determine image URL
+    final imageUrl = ad["images"] is List && ad["images"].isNotEmpty
+        ? ad["images"][0]
+        : null;
+
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+      child: ListTile(
+        leading: imageUrl != null
+            ? Image.network(
+                imageUrl,
+                width: 60,
+                height: 60,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) =>
+                    const Icon(Icons.broken_image, size: 40),
+              )
+            : const Icon(Icons.image, size: 40),
+        title: Text(ad['title'] ?? (isBanner ? "Banner Ad" : "No title")),
+        subtitle: isBanner
+            ? Text(
+                "Banner • Created: ${ad['createdAt'] is Timestamp ? (ad['createdAt'] as Timestamp).toDate().toString().split(' ').first : 'N/A'}",
+              )
+            : Text(
+                "User: ${ad['userId'] ?? 'N/A'}\nExpiry: ${ad['expiryDate'] is Timestamp ? (ad['expiryDate'] as Timestamp).toDate().toString().split(' ').first : 'N/A'}",
+              ),
+
+        onTap: () {
+          final adData = adDoc.data() as Map<String, dynamic>;
+
+          if (isBanner) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) =>
+                    AddBannerFAB(userId: adData['userId'] ?? '', adId: adId),
+              ),
+            );
+          } else {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => AdDetailScreen(
+                  adDoc: adDoc,
+                  isAdmin: isAdmin,
+                  adId: adId,
+                  adData: adData,
+                  userId: adData['userId'] ?? parentUserId ?? '',
+                ),
+              ),
+            );
+          }
+        },
+        trailing: isBanner || !isAdmin
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.more_vert),
+                onPressed: () => _showAdActions(parentUserId!, adId, ad),
+              ),
+      ),
+    );
   }
 
   @override
@@ -86,29 +234,41 @@ class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                onChanged: (_) => setState(() {}),
               ),
             ),
             Expanded(
               child: TabBarView(
                 controller: _tabController,
                 children: _tabs.map((tab) {
-                  // 👇 Different collection for Banners
-                  final query = tab == "Banners"
-                      ? FirebaseFirestore.instance
-                            .collection("classifieds")
-                            .doc("baners")
-                            .collection("baner")
-                            .orderBy("createdAt", descending: true)
-                      : FirebaseFirestore.instance
-                            .collection("classifieds")
-                            .orderBy("createdAt", descending: true);
+                  // 💡 CRITICAL FIX: Separate 'Featured' query to reduce client-side filtering
+                  Query query;
+
+                  if (tab == "Banners") {
+                    // Query for Banners only
+                    query = _firestore
+                        .collection("banners")
+                        .orderBy("createdAt", descending: true);
+                  } else if (tab == "Featured") {
+                    // Query for Featured ads, filtered server-side
+                    query = _firestore
+                        .collectionGroup("classifieds")
+                        .where("isFeatured", isEqualTo: true) // Server Filter
+                        .orderBy("createdAt", descending: true);
+                  } else {
+                    // Query for ALL classifieds (Active/Expired require complex client-side date checks)
+                    query = _firestore
+                        .collectionGroup("classifieds")
+                        .orderBy("createdAt", descending: true);
+                  }
 
                   return StreamBuilder<QuerySnapshot>(
                     stream: query.snapshots(),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator());
+                      }
+                      if (snapshot.hasError) {
+                        return Center(child: Text("Error: ${snapshot.error}"));
                       }
                       if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                         return Center(
@@ -121,45 +281,9 @@ class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
                       }
 
                       final docs = snapshot.data!.docs;
-                      final now = DateTime.now();
 
-                      final filteredAds = docs.where((doc) {
-                        final data = doc.data() as Map<String, dynamic>;
-                        final expiryDate = data["expiryDate"] != null
-                            ? (data["expiryDate"] as Timestamp).toDate()
-                            : null;
-
-                        // 🔍 Search filter
-                        if (_searchController.text.isNotEmpty &&
-                            !(data["title"] ?? "")
-                                .toString()
-                                .toLowerCase()
-                                .contains(
-                                  _searchController.text.toLowerCase(),
-                                )) {
-                          return false;
-                        }
-
-                        // Tab filters
-                        if (tab == "Active") {
-                          return data["status"] == "Active" &&
-                              expiryDate != null &&
-                              expiryDate.isAfter(now);
-                        }
-                        if (tab == "Expired") {
-                          return data["status"] == "Expired" ||
-                              (expiryDate != null && expiryDate.isBefore(now));
-                        }
-                        if (tab == "Featured") {
-                          return data["isFeatured"] == true;
-                        }
-                        if (tab == "Banners") {
-                          return data["status"] ==
-                              "Active"; // banners already separate
-                        }
-
-                        return true;
-                      }).toList();
+                      // APPLY FILTERING: Apply the search and tab filter to the data
+                      final filteredAds = _filterAds(tab, docs);
 
                       if (filteredAds.isEmpty) {
                         return const Center(
@@ -170,53 +294,7 @@ class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
                       return ListView.builder(
                         itemCount: filteredAds.length,
                         itemBuilder: (ctx, index) {
-                          final ad =
-                              filteredAds[index].data() as Map<String, dynamic>;
-                          final adId = filteredAds[index].id;
-
-                          return Card(
-                            margin: const EdgeInsets.symmetric(
-                              vertical: 6,
-                              horizontal: 12,
-                            ),
-                            child: ListTile(
-                              leading:
-                                  ad["images"] != null &&
-                                      ad["images"].isNotEmpty
-                                  ? Image.network(
-                                      ad["images"][0],
-                                      width: 60,
-                                      fit: BoxFit.cover,
-                                    )
-                                  : const Icon(Icons.image, size: 40),
-                              title: Text(ad['title'] ?? "No title"),
-                              subtitle: Text(
-                                tab == "Banners"
-                                    ? "Banner Ad"
-                                    : "User: ${ad['userId']}\nExpiry: ${ad['expiryDate']?.toDate()?.toString().split(" ").first ?? "N/A"}",
-                              ),
-
-                              onTap: () {
-                                final adDoc = filteredAds[index];
-                                final adData =
-                                    adDoc.data() as Map<String, dynamic>;
-                                final adId = adDoc.id;
-
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => AdDetailScreen(
-                                      adDoc: adDoc,
-                                      isAdmin: isAdmin,
-                                      adId: adId,
-                                      adData: adData,
-                                      userId: adData['userId'] ?? '',
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          );
+                          return _buildAdListTile(tab, filteredAds[index]);
                         },
                       );
                     },
@@ -236,6 +314,104 @@ class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
     );
   }
 
+  // --- Ad Management Helpers ---
+
+  void _showAdActions(
+    String parentUserId,
+    String adId,
+    Map<String, dynamic> ad,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (ad['expiryDate'] != null)
+              ListTile(
+                leading: const Icon(Icons.access_time),
+                title: const Text('Extend Ad Duration'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showExtendDialog(parentUserId, adId, ad);
+                },
+              ),
+            ListTile(
+              leading: const Icon(Icons.featured_play_list),
+              title: Text(
+                ad['isFeatured'] == true ? 'Unfeature Ad' : 'Feature Ad',
+              ),
+              onTap: () {
+                Navigator.pop(ctx);
+                _toggleFeatured(parentUserId, adId, ad['isFeatured'] != true);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_forever, color: Colors.red),
+              title: const Text('Delete Ad'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _deleteAd(parentUserId, adId, ad['title'] ?? 'this ad');
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _toggleFeatured(
+    String parentUserId,
+    String adId,
+    bool isFeatured,
+  ) async {
+    try {
+      await _firestore
+          .collection("users")
+          .doc(parentUserId)
+          .collection("classifieds")
+          .doc(adId)
+          .update({"isFeatured": isFeatured});
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isFeatured ? "Ad marked as Featured" : "Ad removed from Featured",
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error updating feature status: $e")),
+      );
+    }
+  }
+
+  Future<void> _deleteAd(String parentUserId, String adId, String title) async {
+    try {
+      await _firestore
+          .collection("users")
+          .doc(parentUserId)
+          .collection("classifieds")
+          .doc(adId)
+          .delete();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("$title deleted successfully")));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error deleting ad: $e")));
+    }
+  }
+
+  // --- Add/Extend Dialogs ---
+
   void _showAddClassifiedOptions() {
     String? selectedType;
     final TextEditingController userIdController = TextEditingController();
@@ -247,20 +423,29 @@ class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            DropdownButtonFormField<String>(
-              decoration: const InputDecoration(labelText: "Ad Type"),
-              items: ["Normal", "Banner"]
-                  .map(
-                    (type) => DropdownMenuItem(value: type, child: Text(type)),
-                  )
-                  .toList(),
-              onChanged: (val) => selectedType = val,
+            StatefulBuilder(
+              builder: (context, setStateDialog) {
+                return DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(labelText: "Ad Type"),
+                  items: ["Normal", "Banner"]
+                      .map(
+                        (type) =>
+                            DropdownMenuItem(value: type, child: Text(type)),
+                      )
+                      .toList(),
+                  onChanged: (val) {
+                    setStateDialog(() {
+                      selectedType = val;
+                    });
+                  },
+                );
+              },
             ),
             const SizedBox(height: 12),
             TextField(
               controller: userIdController,
               decoration: const InputDecoration(
-                labelText: "User ID",
+                labelText: "User ID (Required)",
                 border: OutlineInputBorder(),
               ),
             ),
@@ -284,7 +469,6 @@ class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
               }
               Navigator.pop(ctx);
 
-              // ✅ Navigate based on selection
               if (selectedType == "Banner") {
                 Navigator.push(
                   context,
@@ -292,7 +476,6 @@ class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
                     builder: (_) => AddBannerFAB(
                       userId: userIdController.text.trim(),
                       adId: '',
-                      // adId: null,
                     ),
                   ),
                 );
@@ -315,13 +498,17 @@ class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
     );
   }
 
-  void _showExtendDialog(String adId, Map<String, dynamic> ad) {
+  void _showExtendDialog(
+    String parentUserId,
+    String adId,
+    Map<String, dynamic> ad,
+  ) {
     int extendDays = 7;
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setStateDialog) => AlertDialog(
-          title: Text("Extend ${ad['title']}"),
+          title: Text("Extend ${ad['title'] ?? 'Ad'}"),
           content: DropdownButton<int>(
             value: extendDays,
             items: [7, 15, 30]
@@ -338,15 +525,30 @@ class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
             ),
             ElevatedButton(
               onPressed: () async {
-                final newExpiry = (ad["expiryDate"] as Timestamp).toDate().add(
-                  Duration(days: extendDays),
-                );
-                await FirebaseFirestore.instance
+                final expiryDateTimestamp = ad["expiryDate"] as Timestamp?;
+
+                final currentExpiry =
+                    expiryDateTimestamp?.toDate() ?? DateTime.now();
+
+                final newExpiry = currentExpiry.add(Duration(days: extendDays));
+
+                await _firestore
+                    .collection("users")
+                    .doc(parentUserId)
                     .collection("classifieds")
                     .doc(adId)
-                    .update({"expiryDate": newExpiry});
+                    .update({"expiryDate": newExpiry, "status": "Active"});
+
                 if (!mounted) return;
                 Navigator.pop(ctx);
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      "Ad extended to ${newExpiry.toString().split(' ').first}",
+                    ),
+                  ),
+                );
               },
               child: const Text("Extend"),
             ),
