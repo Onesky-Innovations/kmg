@@ -54,7 +54,7 @@ dependencies:
 
 
 flutter_native_splash:
-  color: "#ffffff"        # white background
+  
   image: assets/icons/KMGLOGO.png
   logo_width: 200         # adjust size as needed
   android: true

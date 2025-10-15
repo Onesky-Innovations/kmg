@@ -26,12 +26,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // --- Production-Ready Action Handlers ---
 
-  void _clearCache() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Cache Cleared! (Real logic pending)')),
-    );
-  }
-
   void _handleAuthAction() {
     if (isLoggedIn) {
       // 🚀 REAL IMPLEMENTATION: Call AuthService.logout()

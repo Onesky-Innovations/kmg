@@ -194,7 +194,7 @@ class AdminDashboardScreen extends StatelessWidget {
                 ),
                 _DashboardTile(
                   icon: Icons.article_outlined,
-                  title: "Content & Policy", // Renamed for clarity
+                  title: "FAQ", // Renamed for clarity
                   onTap: () => Navigator.pushNamed(context, "/faqscreen"),
                 ),
                 _DashboardTile(

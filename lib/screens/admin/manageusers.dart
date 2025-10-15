@@ -81,90 +81,6 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     }
   }
 
-  // --- Delete Functionality ---
-  Future<void> _deleteUser(String userId, String userEmail) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Deletion'),
-        content: Text(
-          'Are you sure you want to delete the user: $userEmail? This action is irreversible.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      try {
-        // 1. Delete Firestore Document
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(userId)
-            .delete();
-
-        // Note: You must manually delete the user account from Firebase Authentication
-        // using the Firebase Admin SDK on your server side, as direct client-side
-        // deletion of *other* users is not allowed for security reasons.
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('User deleted successfully from Firestore!'),
-            ),
-          );
-        }
-        // Refresh the list
-        _fetchUsers();
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Error deleting user: $e\n(Authentication account must be deleted on server.)',
-              ),
-            ),
-          );
-        }
-      }
-    }
-  }
-
-  // --- Edit/View Details Functionality ---
-  void _editUser(DocumentSnapshot userDoc) {
-    // Navigate to a separate screen to view/edit user details
-    // You'll need to create this screen: UserDetailScreen
-    Navigator.of(context)
-        .push(
-          MaterialPageRoute(
-            builder: (context) => Scaffold(
-              appBar: AppBar(title: const Text('User Details')),
-              body: Center(
-                child: Text(
-                  'Details for User ID: ${userDoc.id}\n'
-                  'Email: ${(userDoc.data() as Map<String, dynamic>)['email']}',
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-            // If you had a dedicated screen, it would look like this:
-            // builder: (context) => UserDetailScreen(userId: userDoc.id),
-          ),
-        )
-        .then((_) {
-          // Refresh the user list when returning from the detail screen
-          _fetchUsers();
-        });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -231,26 +147,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                           subtitle: Text(email),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
-                            children: [
-                              // Edit Button
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.edit,
-                                  color: Colors.blue,
-                                ),
-                                onPressed: () => _editUser(userDoc),
-                                tooltip: 'Edit User',
-                              ),
-                              // Delete Button
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.delete,
-                                  color: Colors.red,
-                                ),
-                                onPressed: () => _deleteUser(userDoc.id, email),
-                                tooltip: 'Delete User',
-                              ),
-                            ],
+                            children: [],
                           ),
                         ),
                       );

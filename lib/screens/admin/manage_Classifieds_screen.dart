@@ -90,6 +90,7 @@ class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
   }
 
   // UPDATED Filtering logic for stability and efficiency
+  // UPDATED Filtering logic for stability and efficiency
   List<QueryDocumentSnapshot> _filterAds(
     String tab,
     List<QueryDocumentSnapshot> docs,
@@ -103,50 +104,50 @@ class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
       // Check if the document belongs to the 'banners' collection
       final isBannerDoc = doc.reference.parent.id == "banners";
 
-      // --- Common Search Filter (applied to all documents) ---
+      // --- Handle Banners ---
+      if (tab == "Banners") {
+        // Only show Banners in the Banners tab
+        return isBannerDoc;
+      }
+
+      // --- Exclude Banners from Classifieds Tabs ---
+      if (isBannerDoc) {
+        return false;
+      }
+
+      // --- Common Search Filter (Applied ONLY to Classifieds) ---
       final title = (data["title"] ?? "").toString().toLowerCase();
       if (searchQuery.isNotEmpty && !title.contains(searchQuery)) {
         return false;
       }
 
-      // --- Tab-Specific Filtering Logic ---
+      // --- Tab-Specific Filtering Logic for Classifieds ---
 
-      if (tab == "Banners") {
-        // Only show Banners in the Banners tab
-        return isBannerDoc;
-      } else {
-        // Only show Classifieds in Active, Expired, and Featured tabs
-        if (isBannerDoc) {
-          return false; // Exclude banners from classifieds tabs
-        }
+      // Get expiry date safely once for Classifieds
+      final expiryDate = data["expiryDate"] is Timestamp
+          ? (data["expiryDate"] as Timestamp).toDate()
+          : null;
 
-        // Get expiry date safely
-        final expiryDate = data["expiryDate"] is Timestamp
-            ? (data["expiryDate"] as Timestamp).toDate()
-            : null;
+      final isActive = expiryDate != null && expiryDate.isAfter(now);
 
-        // Tab filters for Classifieds
-        if (tab == "Active") {
-          return (data["status"] == "Active" || data["status"] == null) &&
-              expiryDate != null &&
-              expiryDate.isAfter(now);
-        }
-        if (tab == "Expired") {
-          // Includes ads explicitly marked Expired OR where the date has passed
-          final isExpiredByStatus = data["status"] == "Expired";
-          final isExpiredByDate =
-              expiryDate != null && expiryDate.isBefore(now);
-          return isExpiredByStatus || isExpiredByDate;
-        }
-        if (tab == "Featured") {
-          // Since the Stream for 'Featured' is now filtered server-side
-          // by where('isFeatured', isEqualTo: true), we just pass all docs
-          // that pass the search/banner check. This greatly reduces client work.
-          return true;
-        }
+      if (tab == "Featured") {
+        // Server filters by isFeatured=true. Client filters to ensure it's still Active.
+        return (data["isFeatured"] == true) && isActive;
       }
 
-      return !isBannerDoc; // Default for non-banner documents
+      if (tab == "Active") {
+        return (data["status"] == "Active" || data["status"] == null) &&
+            isActive; // Reuse isActive check
+      }
+
+      if (tab == "Expired") {
+        // Includes ads explicitly marked Expired OR where the date has passed
+        final isExpiredByStatus = data["status"] == "Expired";
+        final isExpiredByDate = !isActive; // If not active, it's expired
+        return isExpiredByStatus || isExpiredByDate;
+      }
+
+      return false; // Should not be reached for Classifieds
     }).toList();
   }
 
@@ -286,22 +287,6 @@ class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
           ),
         ),
 
-        // appBar: AppBar(
-        //   title: const Text("Manage Classifieds"),
-        //   bottom: TabBar(
-        //     controller: _tabController,
-        //     labelColor: Colors.white,
-        //     unselectedLabelColor: Colors.white,
-        //     indicator: BoxDecoration(
-        //       borderRadius: BorderRadius.all(Radius.circular(10)),
-        //       color: _getTabColor(_tabController.index),
-        //     ),
-        //     tabs: _tabs.map((tab) => Tab(text: tab)).toList(),
-        //     onTap: (index) {
-        //       setState(() {}); // Refresh indicator color
-        //     },
-        //   ),
-        // ),
         body: Column(
           children: [
             Padding(
