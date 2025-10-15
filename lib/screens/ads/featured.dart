@@ -26,15 +26,19 @@ class FeaturedScreen extends StatelessWidget {
     final bannerHeight = MediaQuery.of(context).size.width * 200 / 1080;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Featured"),
-        automaticallyImplyLeading: false,
-      ),
+      // appBar: AppBar(
+      //   title: const Text("Featured"),
+      //   automaticallyImplyLeading: false,
+      //   backgroundColor: Colors.transparent,
+      //   // Set elevation to 0 to remove the shadow line
+      //   elevation: 0.0,
+      // ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            SizedBox(height: 25),
             const Text(
               "📌 Banners",
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),

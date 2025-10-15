@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:kmg/theme/app_theme.dart';
 
 class CategoryChips extends StatefulWidget {
   final Function(String?) onCategorySelected; // callback to parent
@@ -55,7 +54,7 @@ class _CategoryChipsState extends State<CategoryChips> {
                   child: Icon(
                     category['icon'],
                     color: isSelected
-                        ? AppTheme.activeIconOnPrimary
+                        ? Theme.of(context).colorScheme.primary
                         : Colors.grey[700],
                     size: 30,
                   ),
@@ -65,7 +64,7 @@ class _CategoryChipsState extends State<CategoryChips> {
                   category['name'],
                   style: TextStyle(
                     color: isSelected
-                        ? AppTheme.activeIconOnPrimary
+                        ? Theme.of(context).colorScheme.primary
                         : Colors.grey[700],
                     fontSize: 12,
                     fontWeight: FontWeight.bold,

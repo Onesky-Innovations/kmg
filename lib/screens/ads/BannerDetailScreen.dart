@@ -1,16 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+// NOTE: You must also import the necessary screens for admin functionality
+// For now, we only add the required properties
+// import 'package:kmg/screens/admin/AddBannerFAB.dart';
+// import 'package:kmg/screens/admin/ManageClassifiedsScreen.dart'; // Or your main admin screen
+
 class BannerDetailScreen extends StatelessWidget {
   final String imageUrl;
   final String description;
   final String phone;
+  // NEW ADMIN PROPERTIES: Add these to support future edit logic
+  final String? adId;
+  final String? userId;
+  final Map<String, dynamic>? adData;
 
   const BannerDetailScreen({
     super.key,
     required this.imageUrl,
     required this.description,
     required this.phone,
+    // Initialize new fields
+    this.adId,
+    this.userId,
+    this.adData,
   });
 
   // Function to launch the phone dialer with user feedback
@@ -293,5 +306,23 @@ class BannerDetailScreen extends StatelessWidget {
 }
 
 extension on Color {
-  get shade800 => null;
+  Color get shade800 {
+    // Basic implementation for this specific use case
+    if (this == Colors.deepPurple) return Colors.deepPurple.shade800;
+    if (this == Colors.orange) return Colors.orange.shade800;
+    return this;
+  }
+
+  Color get shade900 {
+    // Basic implementation for this specific use case
+    if (this == Colors.deepPurple) return Colors.deepPurple.shade900;
+    return this;
+  }
+
+  Color get shade50 {
+    // Basic implementation for this specific use case
+    if (this == Colors.deepPurple) return Colors.deepPurple.shade50;
+    if (this == Colors.orange) return Colors.orange.shade50;
+    return this;
+  }
 }

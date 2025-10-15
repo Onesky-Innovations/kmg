@@ -687,7 +687,6 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:collection';
 
-import 'package:kmg/theme/app_theme.dart';
 import 'package:kmg/widgets/search_bar.dart';
 
 /// --- Logo + App Name ---
@@ -991,7 +990,17 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        gradient: AppTheme.primaryGradient,
+        // FIX: Replace static AppTheme.primaryGradient with a dynamic Gradient
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            // Use the theme's dynamic primary color
+            Theme.of(context).colorScheme.primary,
+            // Use the theme's dynamic secondary/accent color
+            Theme.of(context).colorScheme.secondary,
+          ],
+        ),
         borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(12),
           bottomRight: Radius.circular(12),

@@ -3,7 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:kmg/screens/ads/ad_detail_screen.dart';
 import 'package:kmg/screens/settings/sign_in_screen.dart';
-import 'package:kmg/theme/app_theme.dart';
 
 class SavedItemsScreen extends StatelessWidget {
   const SavedItemsScreen({super.key});
@@ -18,8 +17,8 @@ class SavedItemsScreen extends StatelessWidget {
         backgroundColor: Colors.grey.shade50,
         appBar: AppBar(
           title: const Text("Saved Items"),
-          backgroundColor: AppTheme.primary,
-          foregroundColor: AppTheme.iconOnPrimary,
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          foregroundColor: Theme.of(context).colorScheme.onPrimary,
           elevation: 2,
         ),
         body: Center(
@@ -52,7 +51,7 @@ class SavedItemsScreen extends StatelessWidget {
                   icon: const Icon(Icons.login),
                   label: const Text("Sign In"),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primary,
+                    backgroundColor: Theme.of(context).colorScheme.primary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 28,
@@ -85,16 +84,18 @@ class SavedItemsScreen extends StatelessWidget {
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         title: const Text("Saved Items"),
-        backgroundColor: AppTheme.primary,
-        foregroundColor: AppTheme.iconOnPrimary,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         elevation: 2,
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: savedAdsRef.snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppTheme.primary),
+            return Center(
+              child: CircularProgressIndicator(
+                color: Theme.of(context).colorScheme.primary,
+              ),
             );
           }
 

@@ -21,6 +21,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
   String password = '';
   String rePassword = '';
   bool isLoading = false;
+  bool isPasswordVisible = false;
+  bool isRePasswordVisible = false;
 
   Future<void> _signUp() async {
     if (!_formKey.currentState!.validate()) return;
@@ -36,101 +38,236 @@ class _SignUpScreenState extends State<SignUpScreen> {
     setState(() => isLoading = true);
 
     try {
-      // 1️⃣ Create Firebase Auth user
       UserCredential userCredential = await _auth
           .createUserWithEmailAndPassword(email: email, password: password);
 
       String uid = userCredential.user!.uid;
 
-      // 2️⃣ Save user data to Firestore
       await _firestore.collection('users').doc(uid).set({
         'name': name,
         'place': place,
         'email': email,
         'whatsappNumber': whatsapp,
-        'profilePhoto': '', // Default empty, can upload later
+        'profilePhoto': '',
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
+        'admin': false,
       });
 
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Account created successfully!")),
+        SnackBar(
+          content: Text("Welcome, $name! Account created successfully."),
+        ),
       );
 
-      Navigator.pop(context, true); // Return success to ProfileScreen
+      // Pop and return success flag (true) to indicate successful sign-up
+      Navigator.pop(context, true);
     } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(e.message ?? "Signup failed")));
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
+
     return Scaffold(
-      appBar: AppBar(title: const Text("Sign Up")),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
+      appBar: AppBar(title: const Text("Create Account")),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         child: isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : Form(
-                key: _formKey,
-                child: ListView(
-                  children: [
-                    TextFormField(
-                      decoration: const InputDecoration(labelText: 'Name'),
-                      onSaved: (val) => name = val!.trim(),
-                      validator: (val) =>
-                          val == null || val.isEmpty ? 'Enter name' : null,
+            ? Center(child: CircularProgressIndicator(color: primaryColor))
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Join the Community!",
+                    style: theme.textTheme.headlineMedium!.copyWith(
+                      color: primaryColor,
                     ),
-                    TextFormField(
-                      decoration: const InputDecoration(labelText: 'Place'),
-                      onSaved: (val) => place = val!.trim(),
-                      validator: (val) =>
-                          val == null || val.isEmpty ? 'Enter place' : null,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Fill in your details to create your profile.",
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 30),
+
+                  Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        // --- Name ---
+                        TextFormField(
+                          decoration: InputDecoration(
+                            labelText: 'Full Name',
+                            prefixIcon: Icon(
+                              Icons.person_outline,
+                              color: primaryColor,
+                            ),
+                          ),
+                          keyboardType: TextInputType.name,
+                          onSaved: (val) => name = val!.trim(),
+                          validator: (val) => val == null || val.isEmpty
+                              ? 'Please enter your name'
+                              : null,
+                          style: theme.textTheme.bodyLarge,
+                        ),
+                        const SizedBox(height: 20),
+
+                        // --- Place ---
+                        TextFormField(
+                          decoration: InputDecoration(
+                            labelText: 'Your Place/City',
+                            prefixIcon: Icon(
+                              Icons.location_city_outlined,
+                              color: primaryColor,
+                            ),
+                          ),
+                          onSaved: (val) => place = val!.trim(),
+                          validator: (val) => val == null || val.isEmpty
+                              ? 'Please enter your location'
+                              : null,
+                          style: theme.textTheme.bodyLarge,
+                        ),
+                        const SizedBox(height: 20),
+
+                        // --- Email ---
+                        TextFormField(
+                          decoration: InputDecoration(
+                            labelText: 'Email Address',
+                            prefixIcon: Icon(
+                              Icons.email_outlined,
+                              color: primaryColor,
+                            ),
+                          ),
+                          keyboardType: TextInputType.emailAddress,
+                          onSaved: (val) => email = val!.trim(),
+                          validator: (val) => val == null || !val.contains('@')
+                              ? 'Enter a valid email address'
+                              : null,
+                          style: theme.textTheme.bodyLarge,
+                        ),
+                        const SizedBox(height: 20),
+
+                        // --- WhatsApp Number ---
+                        TextFormField(
+                          decoration: InputDecoration(
+                            labelText: 'WhatsApp Number',
+                            prefixIcon: Icon(
+                              Icons.phone_android,
+                              color: primaryColor,
+                            ),
+                          ),
+                          keyboardType: TextInputType.phone,
+                          onSaved: (val) => whatsapp = val!.trim(),
+                          validator: (val) => val == null || val.isEmpty
+                              ? 'Enter WhatsApp number'
+                              : null,
+                          style: theme.textTheme.bodyLarge,
+                        ),
+                        const SizedBox(height: 20),
+
+                        // --- Password ---
+                        TextFormField(
+                          decoration: InputDecoration(
+                            labelText: 'Password',
+                            prefixIcon: Icon(
+                              Icons.lock_outline,
+                              color: primaryColor,
+                            ),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                isPasswordVisible
+                                    ? Icons.visibility
+                                    : Icons.visibility_off,
+                                color: theme.textTheme.bodyMedium!.color,
+                              ),
+                              onPressed: () {
+                                setState(
+                                  () => isPasswordVisible = !isPasswordVisible,
+                                );
+                              },
+                            ),
+                          ),
+                          obscureText: !isPasswordVisible,
+                          onSaved: (val) => password = val!.trim(),
+                          validator: (val) => val == null || val.length < 6
+                              ? 'Password must be at least 6 characters'
+                              : null,
+                          style: theme.textTheme.bodyLarge,
+                        ),
+                        const SizedBox(height: 20),
+
+                        // --- Re-enter Password ---
+                        TextFormField(
+                          decoration: InputDecoration(
+                            labelText: 'Confirm Password',
+                            prefixIcon: Icon(
+                              Icons.lock_open_outlined,
+                              color: primaryColor,
+                            ),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                isRePasswordVisible
+                                    ? Icons.visibility
+                                    : Icons.visibility_off,
+                                color: theme.textTheme.bodyMedium!.color,
+                              ),
+                              onPressed: () {
+                                setState(
+                                  () => isRePasswordVisible =
+                                      !isRePasswordVisible,
+                                );
+                              },
+                            ),
+                          ),
+                          obscureText: !isRePasswordVisible,
+                          onSaved: (val) => rePassword = val!.trim(),
+                          validator: (val) => val == null || val.length < 6
+                              ? 'Password must be at least 6 characters'
+                              : null,
+                          style: theme.textTheme.bodyLarge,
+                        ),
+                        const SizedBox(height: 40),
+
+                        // --- Sign Up Button ---
+                        SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: ElevatedButton(
+                            onPressed: _signUp,
+                            // Styles are inherited from the theme's ElevatedButtonThemeData
+                            child: const Text("SIGN UP"),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // --- Back to Sign In Link ---
+                        TextButton(
+                          onPressed: () {
+                            // Pop the current SignUpScreen to go back to the SignInScreen
+                            Navigator.pop(context);
+                          },
+                          child: Text(
+                            "Already have an account? Sign In",
+                            style: TextStyle(color: primaryColor),
+                          ),
+                        ),
+                      ],
                     ),
-                    TextFormField(
-                      decoration: const InputDecoration(labelText: 'Email'),
-                      keyboardType: TextInputType.emailAddress,
-                      onSaved: (val) => email = val!.trim(),
-                      validator: (val) => val == null || !val.contains('@')
-                          ? 'Enter valid email'
-                          : null,
-                    ),
-                    TextFormField(
-                      decoration: const InputDecoration(
-                        labelText: 'WhatsApp Number',
-                      ),
-                      keyboardType: TextInputType.phone,
-                      onSaved: (val) => whatsapp = val!.trim(),
-                      validator: (val) =>
-                          val == null || val.isEmpty ? 'Enter WhatsApp' : null,
-                    ),
-                    TextFormField(
-                      decoration: const InputDecoration(labelText: 'Password'),
-                      obscureText: true,
-                      onSaved: (val) => password = val!.trim(),
-                      validator: (val) =>
-                          val == null || val.length < 6 ? 'Min 6 chars' : null,
-                    ),
-                    TextFormField(
-                      decoration: const InputDecoration(
-                        labelText: 'Re-enter Password',
-                      ),
-                      obscureText: true,
-                      onSaved: (val) => rePassword = val!.trim(),
-                      validator: (val) =>
-                          val == null || val.length < 6 ? 'Min 6 chars' : null,
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton(
-                      onPressed: _signUp,
-                      child: const Text("Sign Up"),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
       ),
     );

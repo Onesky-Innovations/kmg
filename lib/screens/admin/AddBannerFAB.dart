@@ -288,15 +288,25 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
 class AddBannerFAB extends StatefulWidget {
-  final String userId; // Admin user id
-  final String? bannerId; // null → add, else → edit
-  // Removed unused 'required String adId' from the constructor
-  const AddBannerFAB({
+  // Use adId to maintain consistency with the calling screen (ManageClassifiedsScreen)
+  final String? adId; // null or empty string → add, else → edit
+
+  // NOTE: Although userId and existingData are passed from ManageClassifiedsScreen,
+  // the current logic relies only on adId (now bannerId) to fetch data.
+  // We keep them here to prevent compile errors from the calling screen,
+  // but they are not strictly used in the current version of the state logic.
+  final String userId;
+  final Map<String, dynamic> existingData;
+
+  AddBannerFAB({
     super.key,
+    required this.adId, // This is the ID of the banner to edit (or '' for add)
     required this.userId,
-    this.bannerId,
-    required String adId,
-  });
+    required this.existingData,
+  }) : assert(
+         adId != null || existingData.isEmpty,
+         'adId must be provided for edit mode or existingData should be empty for add mode.',
+       );
 
   @override
   State<AddBannerFAB> createState() => _AddBannerFABState();
@@ -307,6 +317,11 @@ class _AddBannerFABState extends State<AddBannerFAB> {
   final ImagePicker _picker = ImagePicker();
 
   final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _phoneController =
+      TextEditingController(); // Added for phone/description
+  final TextEditingController _descriptionController =
+      TextEditingController(); // Added for phone/description
+
   int _durationDays = 30;
   bool _isActive = true;
   bool _isFeatured = false;
@@ -316,34 +331,52 @@ class _AddBannerFABState extends State<AddBannerFAB> {
   List<String> _existingImages = [];
   Timestamp? _existingCreatedAt;
 
-  // Define the new, simple root collection name
   static const String _bannerCollectionName = "banners";
-  // Define the new storage folder path
-  static const String _storageFolderPath = 'banners';
+  static const String _storageFolderPath = "banners";
+
+  // Check if we are in edit mode
+  bool get isEditMode => widget.adId != null && widget.adId!.isNotEmpty;
 
   @override
   void initState() {
     super.initState();
-    if (widget.bannerId != null) _loadBannerData();
+    // Load data if in edit mode
+    if (isEditMode) _loadBannerData();
   }
 
+  // Renamed from _loadBannerData to indicate it uses the adId from the widget
   Future<void> _loadBannerData() async {
-    // ✅ FIX: Updated Firestore path to the root collection 'banners'
+    setState(() => _isLoading = true);
+
+    // Fetch data using the ID passed from the ManageClassifiedsScreen
     final doc = await FirebaseFirestore.instance
         .collection(_bannerCollectionName)
-        .doc(widget.bannerId)
+        .doc(widget.adId)
         .get();
 
-    if (!doc.exists) return;
+    if (!doc.exists) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Error: Banner document not found.")),
+        );
+        setState(() => _isLoading = false);
+      }
+      return;
+    }
 
     final data = doc.data()!;
     setState(() {
       _titleController.text = data['title'] ?? '';
+      _descriptionController.text =
+          data['description'] ?? ''; // Pre-fill description
+      _phoneController.text = data['phone'] ?? ''; // Pre-fill phone
+
       _durationDays = data['durationDays'] ?? 30;
       _isActive = data['status'] == 'Active';
       _isFeatured = data['isFeatured'] ?? false;
       _existingImages = List<String>.from(data['images'] ?? []);
       _existingCreatedAt = data['createdAt'];
+      _isLoading = false;
     });
   }
 
@@ -366,63 +399,87 @@ class _AddBannerFABState extends State<AddBannerFAB> {
     setState(() => _images.addAll(picked));
   }
 
+  // NOTE: This function handles both ADD and EDIT.
+  // In ADD mode, bannerId is newly generated (inside _submitBanner).
+  // In EDIT mode, bannerId is widget.adId.
   Future<List<String>> _uploadImages(String bannerId) async {
     final storage = FirebaseStorage.instance;
     List<String> urls = [..._existingImages];
-    // ✅ FIX: Updated Storage folder path to the simple 'banners'
     final folder = _storageFolderPath;
 
     for (var img in _images) {
       final file = File(img.path);
-      final fileName = "${DateTime.now().millisecondsSinceEpoch}.jpg";
-      // ✅ FIX: Updated Storage reference path
+      // Use a unique name to prevent collisions, even if we are editing
+      final fileName = "${DateTime.now().millisecondsSinceEpoch}_${img.name}";
       final ref = storage.ref().child('$folder/$bannerId/$fileName');
       final uploadTask = await ref.putFile(file);
       final url = await uploadTask.ref.getDownloadURL();
       urls.add(url);
     }
+
+    // Clear the images list after successful upload
+    _images.clear();
     return urls;
   }
 
   Future<void> _submitBanner() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_existingImages.isEmpty && _images.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please select at least one banner image."),
+        ),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
+
     try {
-      // ✅ FIX: Updated Firestore path for both creating and editing
+      // 1. Determine the document reference (either existing or new)
       final bannerRef = FirebaseFirestore.instance
           .collection(_bannerCollectionName)
-          .doc(widget.bannerId);
+          .doc(
+            isEditMode
+                ? widget
+                      .adId // Use existing ID for update
+                : FirebaseFirestore.instance
+                      .collection(_bannerCollectionName)
+                      .doc()
+                      .id, // Generate new ID for add
+          );
 
-      final newBannerRef = FirebaseFirestore.instance
-          .collection(_bannerCollectionName)
-          .doc();
-
-      final targetRef = widget.bannerId != null ? bannerRef : newBannerRef;
-      final bannerId = targetRef.id;
-
+      final bannerId = bannerRef.id;
       final imageUrls = await _uploadImages(bannerId);
 
+      // 2. Prepare data map
       final bannerData = {
         "id": bannerId,
+        "userId": widget.userId, // Include userId for both add and edit
         "title": _titleController.text.trim(),
+        "description": _descriptionController.text.trim(), // Added
+        "phone": _phoneController.text.trim(), // Added
         "durationDays": _durationDays,
         "images": imageUrls,
         "status": _isActive ? "Active" : "Inactive",
         "isFeatured": _isFeatured,
-        "createdAt": widget.bannerId != null
+        // Preserve existing creation date on edit, set new on add
+        "createdAt": isEditMode
             ? _existingCreatedAt ?? FieldValue.serverTimestamp()
             : FieldValue.serverTimestamp(),
-        "userId": widget.userId,
       };
 
-      await targetRef.set(bannerData, SetOptions(merge: true));
+      // 3. Save/Update data using set(..., merge: true) which works for both
+      await bannerRef.set(bannerData, SetOptions(merge: true));
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            widget.bannerId != null ? "Banner updated!" : "Banner submitted!",
+            isEditMode
+                ? "Banner updated successfully!"
+                : "Banner added successfully!",
           ),
         ),
       );
@@ -433,24 +490,40 @@ class _AddBannerFABState extends State<AddBannerFAB> {
         context,
       ).showSnackBar(SnackBar(content: Text("Error saving banner: $e")));
     } finally {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  // Helper to remove an existing image
+  void _removeExistingImage(int index) {
+    setState(() {
+      _existingImages.removeAt(index);
+      // NOTE: For a production app, you might want to also delete the image
+      // from Firebase Storage here, but this is a complex step and optional
+      // depending on your storage cleanup strategy.
+    });
+  }
+
+  // Helper to remove a newly picked image
+  void _removeNewImage(int index) {
+    setState(() {
+      _images.removeAt(index);
+    });
   }
 
   @override
   void dispose() {
     _titleController.dispose();
+    _phoneController.dispose();
+    _descriptionController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.yellow,
-      appBar: AppBar(
-        title: Text(widget.bannerId != null ? "Edit Banner" : "Add Banner"),
-      ),
+      backgroundColor: Colors.yellow[50],
+      appBar: AppBar(title: Text(isEditMode ? "Edit Banner" : "Add Banner")),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -472,11 +545,34 @@ class _AddBannerFABState extends State<AddBannerFAB> {
                     ),
                     const SizedBox(height: 12),
 
+                    // Phone Number (New Field)
+                    TextFormField(
+                      controller: _phoneController,
+                      decoration: const InputDecoration(
+                        labelText: "Phone Number",
+                        hintText: "Enter contact number (e.g., +1234567890)",
+                      ),
+                      keyboardType: TextInputType.phone,
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Description (New Field)
+                    TextFormField(
+                      controller: _descriptionController,
+                      decoration: const InputDecoration(
+                        labelText: "Description",
+                        hintText:
+                            "Enter a brief description for the detail screen",
+                      ),
+                      maxLines: 3,
+                    ),
+                    const SizedBox(height: 12),
+
                     // Duration
                     TextFormField(
                       initialValue: _durationDays.toString(),
                       decoration: const InputDecoration(
-                        labelText: "Duration Days",
+                        labelText: "Duration (Days)",
                       ),
                       keyboardType: TextInputType.number,
                       onChanged: (val) =>
@@ -484,63 +580,68 @@ class _AddBannerFABState extends State<AddBannerFAB> {
                     ),
                     const SizedBox(height: 12),
 
-                    // Status toggle
+                    // Active Switch
                     SwitchListTile(
                       value: _isActive,
-                      onChanged: (val) => setState(() => _isActive = val),
+                      onChanged: (v) => setState(() => _isActive = v),
                       title: const Text("Active"),
+                      tileColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                      ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
 
-                    // Featured toggle
+                    // Featured Switch
                     SwitchListTile(
                       value: _isFeatured,
-                      onChanged: (val) => setState(() => _isFeatured = val),
+                      onChanged: (v) => setState(() => _isFeatured = v),
                       title: const Text("Featured"),
+                      tileColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                      ),
                     ),
                     const SizedBox(height: 12),
 
-                    // Pick Images
+                    // Image Picker Button
                     ElevatedButton.icon(
                       onPressed: _pickImages,
                       icon: const Icon(Icons.image),
-                      label: const Text("Pick Images (1080×200px)"),
+                      label: Text(
+                        "Pick Images (${_existingImages.length + _images.length}/3)",
+                      ),
                     ),
                     const SizedBox(height: 12),
 
-                    // Image preview
+                    // Image Preview Section
                     if (_existingImages.isNotEmpty || _images.isNotEmpty)
                       SizedBox(
-                        height: 100,
+                        height: 110,
                         child: ListView(
                           scrollDirection: Axis.horizontal,
                           children: [
-                            ..._existingImages.map(
-                              (url) => Padding(
-                                padding: const EdgeInsets.all(4),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.network(
-                                    url,
-                                    width: 200,
-                                    height: 100,
-                                    fit: BoxFit.cover,
-                                  ),
-                                ),
+                            // Existing Images
+                            ..._existingImages.asMap().entries.map(
+                              (entry) => _buildImageThumbnail(
+                                entry.value,
+                                isNetwork: true,
+                                onRemove: () => _removeExistingImage(entry.key),
                               ),
                             ),
-                            ..._images.map(
-                              (file) => Padding(
-                                padding: const EdgeInsets.all(4),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.file(
-                                    File(file.path),
-                                    width: 200,
-                                    height: 100,
-                                    fit: BoxFit.cover,
-                                  ),
-                                ),
+
+                            // New Images
+                            ..._images.asMap().entries.map(
+                              (entry) => _buildImageThumbnail(
+                                File(entry.value.path),
+                                isNetwork: false,
+                                onRemove: () => _removeNewImage(entry.key),
                               ),
                             ),
                           ],
@@ -554,9 +655,7 @@ class _AddBannerFABState extends State<AddBannerFAB> {
                       child: ElevatedButton(
                         onPressed: _submitBanner,
                         child: Text(
-                          widget.bannerId != null
-                              ? "Update Banner"
-                              : "Submit Banner",
+                          isEditMode ? "Update Banner" : "Submit Banner",
                         ),
                       ),
                     ),
@@ -564,6 +663,53 @@ class _AddBannerFABState extends State<AddBannerFAB> {
                 ),
               ),
             ),
+    );
+  }
+
+  // Helper Widget for Image Thumbnails
+  Widget _buildImageThumbnail(
+    dynamic imageSource, {
+    required bool isNetwork,
+    required VoidCallback onRemove,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+      child: Stack(
+        children: [
+          Container(
+            width: 150,
+            height: 100,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: isNetwork
+                  ? Image.network(
+                      imageSource as String,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          const Center(child: Icon(Icons.error_outline)),
+                    )
+                  : Image.file(imageSource as File, fit: BoxFit.cover),
+            ),
+          ),
+          Positioned(
+            top: -5,
+            right: -5,
+            child: IconButton(
+              icon: const Icon(Icons.close, color: Colors.red, size: 20),
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.white70,
+                minimumSize: Size.zero,
+                padding: EdgeInsets.zero,
+              ),
+              onPressed: onRemove,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

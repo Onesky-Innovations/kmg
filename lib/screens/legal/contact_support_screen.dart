@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:kmg/theme/app_theme.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ContactSupportScreen extends StatelessWidget {
@@ -225,8 +224,8 @@ class ContactSupportScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text("Dedicated Support Center"),
         centerTitle: true,
-        backgroundColor: AppTheme.secondary,
-        foregroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),

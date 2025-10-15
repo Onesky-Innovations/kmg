@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 // Note: Ensure AddBannerFAB and Add_Classified_FAB are correctly imported
 import 'package:kmg/screens/admin/AddBannerFAB.dart';
+import 'package:kmg/screens/ads/BannerDetailScreen.dart';
 import 'package:kmg/screens/ads/ad_detail_screen.dart';
 import 'Add_Classified_FAB.dart';
 
@@ -16,6 +17,21 @@ class ManageClassifiedsScreen extends StatefulWidget {
 
 class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
     with SingleTickerProviderStateMixin {
+  Color _getTabColor(int index) {
+    switch (index) {
+      case 0:
+        return Colors.green.shade600; // Active (slightly darker for pop)
+      case 1:
+        return Colors.redAccent; // Expired
+      case 2:
+        return Colors.orange.shade700; // Featured (slightly darker)
+      case 3:
+        return Colors.blueAccent; // Banners
+      default:
+        return Colors.grey;
+    }
+  }
+
   final TextEditingController _searchController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -140,7 +156,11 @@ class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
     final adId = adDoc.id;
 
     final isBanner = adDoc.reference.parent.id == "banners";
-    final parentUserId = isBanner ? null : adDoc.reference.parent.parent?.id;
+    // NOTE: For classifieds, parentUserId is doc.reference.parent.parent?.id (the user doc ID)
+    final classifiedParentUserId = isBanner
+        ? null
+        : adDoc.reference.parent.parent?.id;
+    // NOTE: For banners, the userId is stored directly in the document (ad['userId'])
 
     // Determine image URL
     final imageUrl = ad["images"] is List && ad["images"].isNotEmpty
@@ -163,7 +183,7 @@ class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
         title: Text(ad['title'] ?? (isBanner ? "Banner Ad" : "No title")),
         subtitle: isBanner
             ? Text(
-                "Banner • Created: ${ad['createdAt'] is Timestamp ? (ad['createdAt'] as Timestamp).toDate().toString().split(' ').first : 'N/A'}",
+                "Banner • Created: ${ad['createdAt'] is Timestamp ? (ad['createdAt'] as Timestamp).toDate().toString().split(' ').first : 'N/A'}\nUser ID: ${ad['userId'] ?? 'N/A'}",
               )
             : Text(
                 "User: ${ad['userId'] ?? 'N/A'}\nExpiry: ${ad['expiryDate'] is Timestamp ? (ad['expiryDate'] as Timestamp).toDate().toString().split(' ').first : 'N/A'}",
@@ -173,11 +193,17 @@ class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
           final adData = adDoc.data() as Map<String, dynamic>;
 
           if (isBanner) {
+            final description = adData['description'] as String? ?? 'N/A';
+            final phone = adData['phone'] as String? ?? 'N/A';
+
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) =>
-                    AddBannerFAB(userId: adData['userId'] ?? '', adId: adId),
+                builder: (_) => BannerDetailScreen(
+                  imageUrl: imageUrl,
+                  description: description,
+                  phone: phone,
+                ),
               ),
             );
           } else {
@@ -189,21 +215,31 @@ class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
                   isAdmin: isAdmin,
                   adId: adId,
                   adData: adData,
-                  userId: adData['userId'] ?? parentUserId ?? '',
+                  userId: adData['userId'] ?? classifiedParentUserId ?? '',
                 ),
               ),
             );
           }
         },
-        trailing: isBanner || !isAdmin
-            ? null
-            : IconButton(
+        // MODIFIED: Use the trailing button for all admin actions
+        trailing: isAdmin
+            ? IconButton(
                 icon: const Icon(Icons.more_vert),
-                onPressed: () => _showAdActions(parentUserId!, adId, ad),
-              ),
+                onPressed: () {
+                  if (isBanner) {
+                    _showBannerActions(adId, ad); // Handle banner actions
+                  } else if (classifiedParentUserId != null) {
+                    // Handle classified ad actions
+                    _showAdActions(classifiedParentUserId, adId, ad);
+                  }
+                },
+              )
+            : null,
       ),
     );
   }
+
+  // ... (rest of the file remains the same)
 
   @override
   Widget build(BuildContext context) {
@@ -216,11 +252,56 @@ class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
       child: Scaffold(
         appBar: AppBar(
           title: const Text("Manage Classifieds"),
+          // Set a clean white background for the AppBar and dark text
+          // backgroundColor: Colors.white,
+          foregroundColor: Colors.black87,
+          elevation: 1, // Subtle shadow for a lift effect
           bottom: TabBar(
             controller: _tabController,
+            // Use the dynamic color for the selected label, and a dark color for unselected
+            labelColor: _getTabColor(_tabController.index),
+            unselectedLabelColor: Colors.white,
+
+            // Set indicator style to be a solid rectangle below the tab, matching the tab's color
+            indicatorPadding: const EdgeInsets.symmetric(
+              horizontal: 4,
+              vertical: 8,
+            ),
+            indicatorSize: TabBarIndicatorSize.tab,
+            indicator: UnderlineTabIndicator(
+              borderSide: BorderSide(
+                width: 4.0, // Thicker underline
+                color: _getTabColor(_tabController.index),
+              ),
+              insets: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+              ), // Give it some padding
+            ),
+
             tabs: _tabs.map((tab) => Tab(text: tab)).toList(),
+            onTap: (index) {
+              // Must call setState to update the labelColor and indicator color
+              setState(() {});
+            },
           ),
         ),
+
+        // appBar: AppBar(
+        //   title: const Text("Manage Classifieds"),
+        //   bottom: TabBar(
+        //     controller: _tabController,
+        //     labelColor: Colors.white,
+        //     unselectedLabelColor: Colors.white,
+        //     indicator: BoxDecoration(
+        //       borderRadius: BorderRadius.all(Radius.circular(10)),
+        //       color: _getTabColor(_tabController.index),
+        //     ),
+        //     tabs: _tabs.map((tab) => Tab(text: tab)).toList(),
+        //     onTap: (index) {
+        //       setState(() {}); // Refresh indicator color
+        //     },
+        //   ),
+        // ),
         body: Column(
           children: [
             Padding(
@@ -314,7 +395,108 @@ class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
     );
   }
 
-  // --- Ad Management Helpers ---
+  // --- NEW Helper for Deletion Confirmation ---
+
+  void _confirmDelete({
+    required bool isBanner,
+    required String id,
+    required String title,
+    String? parentUserId,
+  }) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Confirm Deletion"),
+        content: Text("Are you sure you want to permanently delete '$title'?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+              Navigator.of(ctx).pop(); // Close dialog
+              if (isBanner) {
+                _deleteBanner(id, title);
+              } else {
+                // We know parentUserId is non-null for classifieds
+                _deleteAd(parentUserId!, id, title);
+              }
+            },
+            child: const Text("Delete", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- Banner Management Helpers ---
+
+  void _showBannerActions(String bannerId, Map<String, dynamic> bannerData) {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit),
+              title: const Text('Edit Banner'),
+              onTap: () {
+                Navigator.pop(ctx);
+                // FIX/EDIT: Ensure correct parameters for edit mode are passed.
+                // The actual form logic (pre-filling fields and using .update())
+                // must be handled inside AddBannerFAB.dart.
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AddBannerFAB(
+                      userId:
+                          bannerData['userId'] ?? '', // Pass existing userId
+                      adId: bannerId, // Pass the banner ID to enable edit mode
+                      existingData:
+                          bannerData, // Pass existing data for pre-filling
+                    ),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_forever, color: Colors.red),
+              title: const Text('Delete Banner'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _confirmDelete(
+                  isBanner: true,
+                  id: bannerId,
+                  title: bannerData['title'] ?? 'this banner',
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _deleteBanner(String bannerId, String title) async {
+    try {
+      await _firestore.collection("banners").doc(bannerId).delete();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("$title deleted successfully")));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error deleting banner: $e")));
+    }
+  }
+
+  // --- Classified Ad Management Helpers (Updated for Delete Confirmation) ---
 
   void _showAdActions(
     String parentUserId,
@@ -351,7 +533,12 @@ class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
               title: const Text('Delete Ad'),
               onTap: () {
                 Navigator.pop(ctx);
-                _deleteAd(parentUserId, adId, ad['title'] ?? 'this ad');
+                _confirmDelete(
+                  isBanner: false,
+                  id: adId,
+                  title: ad['title'] ?? 'this ad',
+                  parentUserId: parentUserId,
+                );
               },
             ),
           ],
@@ -476,6 +663,7 @@ class _ManageClassifiedsScreenState extends State<ManageClassifiedsScreen>
                     builder: (_) => AddBannerFAB(
                       userId: userIdController.text.trim(),
                       adId: '',
+                      existingData: {},
                     ),
                   ),
                 );

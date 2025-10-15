@@ -6,7 +6,7 @@ import 'package:kmg/screens/ads/BannerDetailScreen.dart';
 import 'package:kmg/screens/ads/Pre_add_submit_screen.dart';
 import 'package:kmg/screens/settings/profile_screen.dart';
 import 'package:kmg/screens/settings/sign_in_screen.dart';
-import 'package:kmg/theme/app_theme.dart';
+// import 'package:kmg/theme/app_theme.dart';
 import 'package:kmg/widgets/custom_app_bar.dart';
 import 'package:kmg/widgets/category_chips.dart';
 import 'package:kmg/widgets/auto_scroll_ad.dart';
@@ -88,7 +88,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: _currentIndex == 0
           ? CustomAppBar(
               selectedPlace: _selectedPlace,
@@ -208,7 +208,19 @@ class _DashboardScreenState extends State<DashboardScreen>
         height: 60,
         width: 60,
         decoration: BoxDecoration(
-          gradient: AppTheme.primaryGradient,
+          // FIX: Replace static AppTheme.primaryGradient with a dynamic LinearGradient
+          gradient: LinearGradient(
+            // Define the direction of the gradient
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            // Use the theme's dynamic colors for the stops
+            colors: [
+              Theme.of(context).colorScheme.primary, // Start color
+              Theme.of(
+                context,
+              ).colorScheme.secondary, // End color (or use primary.withOpacity)
+            ],
+          ),
           borderRadius: BorderRadius.circular(16),
         ),
         child: RawMaterialButton(
@@ -216,7 +228,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          child: const Icon(Icons.add, size: 32, color: AppTheme.iconOnPrimary),
+          child: Icon(Icons.add, size: 32, color: Colors.white),
         ),
       ),
     );
@@ -226,14 +238,25 @@ class _DashboardScreenState extends State<DashboardScreen>
     return Container(
       height: 70,
       decoration: BoxDecoration(
-        gradient: AppTheme.primaryGradient,
+        // FIX 1: Replace static AppTheme.primaryGradient with a dynamic LinearGradient
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            // Use the theme's dynamic primary color
+            Theme.of(context).colorScheme.primary,
+            // Use the theme's dynamic secondary color for a nice gradient transition
+            Theme.of(context).colorScheme.secondary,
+          ],
+        ),
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(32),
           topRight: Radius.circular(32),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.blueAccent.withOpacity(0.3),
+            // FIX 2: Use the dynamic primary color for the shadow
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
             blurRadius: 12,
             spreadRadius: 1,
           ),
@@ -247,7 +270,8 @@ class _DashboardScreenState extends State<DashboardScreen>
           onTabChangedListener: _onTabChanged,
           barBackgroundColor: Colors.transparent,
           circleColor: Colors.white,
-          activeIconColor: AppTheme.activeIconOnPrimary,
+          // FIX: Replaced static AppTheme color with dynamic theme primary color
+          activeIconColor: Theme.of(context).colorScheme.primary,
           inactiveIconColor: Colors.white70,
           textColor: Colors.white,
           hasElevationShadows: true,

@@ -2532,7 +2532,6 @@ import 'package:kmg/screens/legal/contact_support_screen.dart';
 import 'package:kmg/screens/matrimony/MatriLoginScreen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-import 'package:kmg/theme/app_theme.dart';
 import 'package:kmg/screens/matrimony/matri_detail_screen.dart';
 import 'package:kmg/screens/matrimony/matri_submit_screen.dart';
 
@@ -2975,9 +2974,9 @@ class _MatrimonyScreenState extends State<MatrimonyScreen> {
         title: const Text("Matrimony"),
         actions: [
           IconButton(
-            icon: const Icon(
+            icon: Icon(
               Icons.headphones_outlined,
-              color: AppTheme.primaryColor,
+              color: Theme.of(context).colorScheme.onPrimary,
             ),
             onPressed: () {
               Navigator.push(
@@ -2989,8 +2988,6 @@ class _MatrimonyScreenState extends State<MatrimonyScreen> {
                 ),
               );
             },
-
-            // onPressed: () {}, // UI only
           ),
           if (_loggedInUser != null) ...[
             const Icon(Icons.person, color: Colors.blue),
@@ -3035,15 +3032,21 @@ class _MatrimonyScreenState extends State<MatrimonyScreen> {
                         controller: _searchController,
                         decoration: InputDecoration(
                           hintText: "Search by name, location..",
-                          prefixIcon: const Icon(
+                          prefixIcon: Icon(
+                            // 'const' removed from Icon since color is now dynamic
                             Icons.search,
-                            color: AppTheme.primaryColor,
+                            // FIX 1: Use the theme's dynamic primary color
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                           suffixIcon: _searchController.text.isNotEmpty
                               ? IconButton(
-                                  icon: const Icon(
+                                  icon: Icon(
+                                    // 'const' removed from Icon since color is now dynamic
                                     Icons.clear,
-                                    color: AppTheme.lightText,
+                                    // FIX 2: Use a theme-aware neutral color (onSurface with opacity)
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurface.withOpacity(0.6),
                                   ),
                                   onPressed: () {
                                     _searchController.clear();
@@ -3052,7 +3055,8 @@ class _MatrimonyScreenState extends State<MatrimonyScreen> {
                                 )
                               : null,
                           filled: true,
-                          fillColor: AppTheme.cardBackground,
+                          // FIX 3: Use the theme's standard surface/card color
+                          fillColor: Theme.of(context).colorScheme.surface,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(30),
                             borderSide: BorderSide.none,
@@ -3062,9 +3066,9 @@ class _MatrimonyScreenState extends State<MatrimonyScreen> {
                     ),
                     if (_loggedInUser != null)
                       IconButton(
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.headphones_outlined,
-                          color: AppTheme.primaryColor,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                         onPressed: () {
                           Navigator.push(
@@ -3174,8 +3178,24 @@ class _MatrimonyScreenState extends State<MatrimonyScreen> {
                                         ],
                                       ),
                                     ),
-                                    Text(name),
-                                    Text("$age | $place"),
+                                    Text(
+                                      name,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight
+                                            .bold, // Example: make it bold
+                                        color: Colors
+                                            .deepPurple, // <--- CHANGE COLOR HERE (e.g., to blueAccent)
+                                      ),
+                                    ),
+                                    Text(
+                                      "$age | $place",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight
+                                            .bold, // Example: make it bold
+                                        color: Colors
+                                            .blueAccent, // <--- CHANGE COLOR HERE (e.g., to blueAccent)
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
