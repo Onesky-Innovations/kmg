@@ -907,11 +907,11 @@ class _ProfileHeaderDelegate extends SliverPersistentHeaderDelegate {
                   ),
                 ),
                 Text(
-                  "User ID: ${data['userId'] ?? 'N/A'}",
+                  " ${data['place'] ?? 'N/A'}",
                   style: TextStyle(
                     fontWeight: FontWeight.w500,
                     // FIX: Text color is now theme-aware
-                    color: Theme.of(context).textTheme.bodySmall?.color,
+                    color: Theme.of(context).textTheme.bodyMedium?.color,
                     fontSize: 14,
                   ),
                 ),

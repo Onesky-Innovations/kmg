@@ -76,7 +76,7 @@ class _KnowMoreScreenState extends State<KnowMoreScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const Icon(Icons.info_outline, size: 100, color: Colors.blueAccent),
+            const Icon(Icons.info_outline, size: 75, color: Colors.blueAccent),
             const SizedBox(height: 20),
             Text(
               _isEnglish ? _englishTitle : _malayalamTitle, // Dynamic Title

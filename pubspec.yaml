@@ -54,9 +54,8 @@ dependencies:
 
 
 flutter_native_splash:
-  
+  color: "transparent"
   image: assets/icons/KMGLOGO.png
-  logo_width: 200         # adjust size as needed
   android: true
   ios: true
   ios_content_mode: scaleAspectFit
@@ -88,7 +87,7 @@ flutter_icons:
   android: true
   ios: true
   image_path: "assets/icons/KMGLOGO.png"
-  android_adaptive_icon_background: "#ffffff"  # white background
+  android_adaptive_icon_background: "transparent"  # white background
   
 
 # The following section is specific to Flutter packages.

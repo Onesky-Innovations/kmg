@@ -190,7 +190,7 @@ class AdminDashboardScreen extends StatelessWidget {
                 _DashboardTile(
                   icon: Icons.delete_outline_rounded,
                   title: "Deletion Requests", // Renamed for clarity
-                  onTap: () => Navigator.pushNamed(context, "/delete_request"),
+                  onTap: () => Navigator.pushNamed(context, "/deleteRequests"),
                 ),
                 _DashboardTile(
                   icon: Icons.article_outlined,

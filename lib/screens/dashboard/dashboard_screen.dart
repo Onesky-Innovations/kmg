@@ -13,7 +13,7 @@ import 'package:kmg/widgets/auto_scroll_ad.dart';
 
 import '../ads/ads_feed_screen.dart';
 import '../ads/featured.dart';
-import '../matrimony/matrimony_screen.dart';
+import '../matrimony/matri_screens/matrimony_screen.dart';
 import 'package:circle_bottom_navigation/widgets/tab_data.dart';
 
 class DashboardScreen extends StatefulWidget {

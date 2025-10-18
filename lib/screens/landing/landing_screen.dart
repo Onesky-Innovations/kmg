@@ -72,9 +72,21 @@ class LandingPage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: Text(
-                    "Know More",
-                    style: TextStyle(fontSize: 18, color: Colors.blueAccent),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min, // Keeps content tight
+                    mainAxisAlignment:
+                        MainAxisAlignment.center, // Center horizontally
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.blueAccent),
+                      SizedBox(width: 5),
+                      Text(
+                        "Know More",
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: Colors.blueAccent,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],

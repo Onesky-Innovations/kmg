@@ -1,3 +1,1043 @@
+import 'package:flutter/material.dart';
+// import 'package:cloud_firestore/cloud_firestore.dart';
+// import 'package:kmg/screens/legal/contact_support_screen.dart';
+// import 'package:kmg/screens/matrimony/MatriLoginScreen.dart';
+// import 'package:shared_preferences/shared_preferences.dart';
+// import 'dart:convert';
+// import 'package:kmg/screens/matrimony/matri_detail_screen.dart';
+// import 'package:kmg/screens/matrimony/matri_submit_screen.dart';
+
+// class MatrimonyScreen extends StatefulWidget {
+//   const MatrimonyScreen({super.key});
+
+//   @override
+//   State<MatrimonyScreen> createState() => _MatrimonyScreenState();
+// }
+
+// class _MatrimonyScreenState extends State<MatrimonyScreen> {
+//   final TextEditingController _searchController = TextEditingController();
+//   String _searchQuery = "";
+//   List<Map<String, dynamic>> _recentlyViewed = [];
+//   List<Map<String, dynamic>> _viewedRecommended = [];
+//   Map<String, dynamic>? _loggedInUser;
+//   String _userGender = "";
+//   List<String> _favorites = [];
+//   bool _applyLimitToFemale = false;
+
+//   // Age Gap Filter State
+//   RangeValues _currentAgeRange = const RangeValues(20, 35);
+//   double _minSliderAge = 18;
+//   double _maxSliderAge = 70;
+
+//   // Persistent Per-User View Count & Limit
+//   // NOTE: _userViewCount will now be loaded from _loggedInUser['viewCount']
+//   int _userViewCount = 0;
+//   // NOTE: _userViewLimit will now be loaded from _loggedInUser['accessibleProfiles']
+//   int _userViewLimit = 20;
+  
+//   // 🔥 DELETED: The following local persistence for view count is no longer necessary
+//   // final String _viewCountKey = "userViewCount";
+//   // String get _viewCountKeyForUser =>
+//   //      "userViewCount_${_loggedInUser?['id'] ?? 'guest'}";
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     _loadGlobalSettings();
+//     _loadLoggedInUser(); // This will now handle loading the viewCount
+//     // 🔥 DELETED: _loadUserViewCount(); // No longer needed
+//     _loadRecentlyViewed();
+//     _loadViewedRecommended();
+//     _loadFavorites();
+//     _searchController.addListener(_onSearchChanged);
+//   }
+
+//   @override
+//   void dispose() {
+//     _searchController.removeListener(_onSearchChanged);
+//     _searchController.dispose();
+//     super.dispose();
+//   }
+
+//   void _onSearchChanged() {
+//     setState(() {
+//       _searchQuery = _searchController.text.toLowerCase();
+//     });
+//   }
+
+//   // ------------------- User & View Count Persistence -------------------
+
+//   Future<void> _loadGlobalSettings() async {
+//     final doc = await FirebaseFirestore.instance
+//         .collection('appSettings')
+//         .doc('matrimony_view_config')
+//         .get();
+//     if (doc.exists) {
+//       final data = doc.data() ?? {};
+//       setState(() {
+//         _applyLimitToFemale = data['applyLimitToFemale'] ?? false;
+//       });
+//     }
+//   }
+  
+//   // 🔥 DELETED: The following functions are no longer needed as view count is now
+//   // centrally managed on the user's profile document in Firestore:
+//   /*
+//   Future<void> _loadUserViewCount() async {
+//     if (_loggedInUser == null) return;
+//     final prefs = await SharedPreferences.getInstance();
+//     final userViewCount = prefs.getInt(_viewCountKey) ?? 0;
+//     setState(() {
+//       _userViewCount = userViewCount;
+//     });
+//   }
+
+//   Future<void> _saveUserViewCount() async {
+//     if (_loggedInUser == null) return;
+//     final prefs = await SharedPreferences.getInstance();
+//     await prefs.setInt(_viewCountKey, _userViewCount);
+//   }
+//   */
+
+//   Future<void> _loadLoggedInUser() async {
+//     final prefs = await SharedPreferences.getInstance();
+//     final userString = prefs.getString("loggedInUser");
+//     if (userString != null) {
+//       try {
+//         final data = json.decode(userString) as Map<String, dynamic>;
+        
+//         // 🔥 NEW: Check Firestore for the latest user profile data
+//         final userId = data['userId'];
+//         if (userId != null) {
+//           final userDoc = await FirebaseFirestore.instance
+//               .collection('matrimony') // Assuming users are stored in 'matrimony' collection with their userId as docId
+//               .doc(userId.toString())
+//               .get();
+              
+//           if (userDoc.exists) {
+//             final latestUserData = userDoc.data()!;
+            
+//             setState(() {
+//               // Update state with latest data from Firestore
+//               _loggedInUser = latestUserData; 
+//               _userGender = (latestUserData['gender'] ?? "").toString().toLowerCase();
+//               // Load viewCount from logged-in user's profile
+//               _userViewCount = (latestUserData['viewCount'] as num?)?.toInt() ?? 0;
+//               // Load limit from logged-in user's profile
+//               _userViewLimit = (latestUserData['accessibleProfiles'] as num?)?.toInt() ?? 20; 
+//             });
+//             _setInitialAgeRange(latestUserData['age']);
+//             return; // Exit if user data successfully loaded from Firestore
+//           }
+//         }
+
+//         // Fallback to local data if no userId or Firestore fetch fails (less robust)
+//         setState(() {
+//           _loggedInUser = data;
+//           _userGender = (data['gender'] ?? "").toString().toLowerCase();
+//           _userViewCount = (data['viewCount'] as num?)?.toInt() ?? 0; // Use local viewCount as fallback
+//           _userViewLimit = (data['accessibleProfiles'] as num?)?.toInt() ?? 20;
+//         });
+//         _setInitialAgeRange(data['age']);
+
+//       } catch (_) {
+//         // Handle decoding error silently
+//       }
+//     }
+//   }
+
+//   void _setInitialAgeRange(dynamic userAge) {
+//     final age = int.tryParse(userAge?.toString() ?? '25') ?? 25;
+//     setState(() {
+//       final rawStart = (age - 5).toDouble();
+//       final rawEnd = (age + 5).toDouble();
+//       final start = rawStart.clamp(_minSliderAge, _maxSliderAge) as double;
+//       final end = rawEnd.clamp(_minSliderAge, _maxSliderAge) as double;
+//       _currentAgeRange = RangeValues(start, end);
+//     });
+//   }
+
+//   Future<void> _logout() async {
+//     final prefs = await SharedPreferences.getInstance();
+//     await prefs.remove("loggedInUser");
+//     setState(() {
+//       _loggedInUser = null;
+//       _userGender = "";
+//       _userViewCount = 0;
+//       _recentlyViewed = [];
+//       _viewedRecommended = [];
+//       _favorites = [];
+//     });
+//   }
+
+//   Future<void> _requireLogin() async {
+//     final result = await Navigator.push(
+//       context,
+//       MaterialPageRoute(builder: (_) => const MatriLoginScreen()),
+//     );
+//     if (result != null && result is Map<String, dynamic>) {
+//       await _loadLoggedInUser();
+//       // 🔥 DELETED: await _loadUserViewCount();
+//       await _loadRecentlyViewed();
+//       await _loadViewedRecommended();
+//       await _loadFavorites();
+//     }
+//   }
+
+//   // ... (Other helper functions like _addToRecentlyViewed, _loadRecentlyViewed, etc. remain unchanged)
+  
+//   Future<void> _addToRecentlyViewed(Map<String, dynamic> profile) async {
+//     final prefs = await SharedPreferences.getInstance();
+//     _recentlyViewed.removeWhere(
+//       (p) => p["id"]?.toString() == profile["id"]?.toString(),
+//     );
+//     _recentlyViewed.insert(0, profile);
+//     if (_recentlyViewed.length > 5) {
+//       _recentlyViewed = _recentlyViewed.sublist(0, 5);
+//     }
+//     await prefs.setStringList(
+//       "recentlyViewed",
+//       _recentlyViewed.map((p) => json.encode(p)).toList(),
+//     );
+//     setState(() {});
+//   }
+
+//   Future<void> _loadRecentlyViewed() async {
+//     final prefs = await SharedPreferences.getInstance();
+//     final data = prefs.getStringList("recentlyViewed") ?? [];
+//     setState(() {
+//       _recentlyViewed = data
+//           .map((e) => Map<String, dynamic>.from(json.decode(e)))
+//           .toList();
+//     });
+//   }
+
+//   Future<void> _loadViewedRecommended() async {
+//     final prefs = await SharedPreferences.getInstance();
+//     final data = prefs.getStringList("viewedRecommended") ?? [];
+//     final now = DateTime.now();
+//     final fourDaysAgo = now.subtract(const Duration(days: 4));
+
+//     setState(() {
+//       _viewedRecommended = data
+//           .map((e) {
+//             final map = Map<String, dynamic>.from(json.decode(e));
+//             return {
+//               "id": map["id"]?.toString() ?? "",
+//               "viewedAt": map["viewedAt"] ?? now.toIso8601String(),
+//             };
+//           })
+//           .where((p) {
+//             final viewedAt = DateTime.tryParse(p["viewedAt"] ?? "") ?? now;
+//             return viewedAt.isAfter(fourDaysAgo);
+//           })
+//           .toList();
+//     });
+//     await prefs.setStringList(
+//       "viewedRecommended",
+//       _viewedRecommended.map((p) => json.encode(p)).toList(),
+//     );
+//   }
+
+//   Future<void> _addToViewedRecommended(String? id) async {
+//     if (id == null || id.isEmpty) return;
+//     final prefs = await SharedPreferences.getInstance();
+//     final now = DateTime.now();
+//     await _loadViewedRecommended();
+//     _viewedRecommended.removeWhere((p) => p["id"] == id);
+//     _viewedRecommended.insert(0, {"id": id, "viewedAt": now.toIso8601String()});
+
+//     await prefs.setStringList(
+//       "viewedRecommended",
+//       _viewedRecommended.map((p) => json.encode(p)).toList(),
+//     );
+//     setState(() {});
+//   }
+
+//   Future<void> _loadFavorites() async {
+//     final prefs = await SharedPreferences.getInstance();
+//     setState(() {
+//       _favorites = prefs.getStringList("favorites") ?? [];
+//     });
+//   }
+
+//   Future<void> _toggleFavorite(String? profileId) async {
+//     if (_loggedInUser == null) {
+//       _requireLogin();
+//       return;
+//     }
+
+//     final id = profileId?.toString();
+//     if (id == null || id.isEmpty) return;
+
+//     if (_favorites.contains(id)) {
+//       _favorites.remove(id);
+//     } else {
+//       if (_favorites.length >= 5) {
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           const SnackBar(content: Text("You can add only 5 favorites.")),
+//         );
+//         return;
+//       }
+//       _favorites.add(id);
+//     }
+//     final prefs = await SharedPreferences.getInstance();
+//     await prefs.setStringList("favorites", _favorites);
+//     setState(() {});
+//   }
+
+//   bool _isFavorite(String? profileId) {
+//     final id = profileId?.toString();
+//     if (id == null || id.isEmpty) return false;
+//     return _favorites.contains(id);
+//   }
+
+
+//   // ---------------- Detail Navigation & View Count Enforcement ----------------
+
+//   /// **MODIFIED FUNCTION**: Increments the 'viewCount' for the LOGGED-IN user's profile in Firestore.
+//   /// The parameter is now the logged-in user's ID, not the viewed profile's ID.
+//   Future<int?> _incrementLoggedInUserViewCount(String currentUserId) async {
+//     final userRef = FirebaseFirestore.instance
+//         .collection('matrimony') // Assuming the user's profile is here
+//         .doc(currentUserId);
+
+//     try {
+//       return await FirebaseFirestore.instance.runTransaction<int>((transaction) async {
+//         final snapshot = await transaction.get(userRef);
+
+//         if (!snapshot.exists) {
+//           throw Exception("Logged-in user document does not exist!");
+//         }
+
+//         // Safely get the current viewCount and accessibleProfiles limit
+//         final currentViewCount =
+//             (snapshot.data()?['viewCount'] as num?)?.toInt() ?? 0;
+//         final viewLimit = 
+//             (snapshot.data()?['accessibleProfiles'] as num?)?.toInt() ?? 20;
+
+//         // Only increment if the current count is less than the limit
+//         if (currentViewCount < viewLimit) {
+//             final newViewCount = currentViewCount + 1;
+//             // Update the document with the new view count
+//             transaction.update(userRef, {'viewCount': newViewCount});
+//             return newViewCount; // Return the new count
+//         } else {
+//             return currentViewCount; // Return the current count (limit reached)
+//         }
+//       });
+//     } catch (e) {
+//       // Failed to update the counter
+//       return null;
+//     }
+//   }
+
+//   // The original _incrementProfileViewCount (for the viewed profile) can be kept, 
+//   // but it's not strictly necessary for the user's *limit* logic.
+//   // I will rename it to avoid confusion, but keep its functionality for now 
+//   // since you had it originally (it tracks how many times a profile was viewed by *anyone*).
+//   Future<void> _incrementViewedProfileTotalCount(String docId) async {
+//      final profileRef = FirebaseFirestore.instance
+//          .collection('matrimony')
+//          .doc(docId);
+ 
+//      try {
+//        await FirebaseFirestore.instance.runTransaction((transaction) async {
+//          final snapshot = await transaction.get(profileRef);
+ 
+//          if (!snapshot.exists) return;
+ 
+//          final currentViewCount =
+//              (snapshot.data()?['viewCount'] as num?)?.toInt() ?? 0;
+ 
+//          final newViewCount = currentViewCount + 1;
+ 
+//          transaction.update(profileRef, {'viewCount': newViewCount});
+//        });
+//      } catch (e) {
+//        // Silent fail
+//      }
+//   }
+
+//   void _navigateToDetail(String docId, Map<String, dynamic> profileData) async {
+//     // 🔥 CHECK 1: Ensure user is logged in before proceeding.
+//     if (_loggedInUser == null || _loggedInUser?['userId'] == null) {
+//       _requireLogin();
+//       return;
+//     }
+
+//     final String currentUserId = _loggedInUser!['userId'].toString();
+
+//     // The logic has shifted: we only care about the logged-in user's limit now.
+//     // The previously used isRecentlyViewed check is no longer relevant for the *limit*
+//     // but is kept for the UI/UX flows.
+
+//     /// Determine if this user is subject to view limits
+//     // This is implicitly checked by the value of _userViewLimit and _userViewCount
+//     final bool isLimitReached = _userViewCount >= _userViewLimit;
+    
+//     // Check for limit *before* attempting the Firestore increment
+//     if (isLimitReached) {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(
+//           content: Text(
+//             "View limit (${_userViewLimit}) reached. Please visit help page to increase the limit.",
+//           ),
+//         ),
+//       );
+//       return;
+//     }
+    
+//     // 🔥 NEW LOGIC: Increment the LOGGED-IN USER's viewCount in Firestore
+//     final newCount = await _incrementLoggedInUserViewCount(currentUserId);
+
+//     if (newCount == null) {
+//         // Failed to update user's view count, stop navigation as a precaution
+//         ScaffoldMessenger.of(context).showSnackBar(
+//             const SnackBar(content: Text("Could not update view count. Please try again.")),
+//         );
+//         return;
+//     }
+    
+//     // Update the local state with the new view count from the transaction result
+//     setState(() {
+//       _userViewCount = newCount;
+//     });
+
+
+//     // Prepare profile for persistence
+//     final profile = _extractAndConvertProfileData(profileData, docId);
+
+//     // Adds the profile to recently viewed and viewed recommended lists.
+//     await _addToRecentlyViewed(profile);
+//     await _addToViewedRecommended(docId);
+
+//     // 🔥 Increment the viewed profile's *total* view count in Firestore (optional based on your needs)
+//     _incrementViewedProfileTotalCount(docId);
+
+//     // Navigate to detail screen
+//     await Navigator.push(
+//       context,
+//       MaterialPageRoute(
+//         builder: (_) =>
+//             MatriDetailScreen(profileId: docId, profile: profileData),
+//       ),
+//     );
+
+//     // Reload lists after returning from detail
+//     _loadRecentlyViewed();
+//     _loadViewedRecommended();
+//     _loadFavorites();
+    
+//     // 🔥 Reload the user data to get the latest viewCount if it was modified outside of this screen
+//     // This is important to ensure the indicator is correct if the limit was reached exactly.
+//     _loadLoggedInUser();
+//   }
+
+//   // ... (Remaining code remains the same)
+
+//   Map<String, dynamic> _extractAndConvertProfileData(
+//     Map<String, dynamic> rawData,
+//     String docId,
+//   ) {
+//     return {
+//       "id": docId,
+//       "name": rawData["name"]?.toString() ?? "",
+//       "age": rawData["age"]?.toString() ?? "",
+//       "place": rawData["place"]?.toString() ?? "",
+//       "gender": rawData["gender"]?.toString() ?? "",
+//       "photo": rawData["photo"]?.toString() ?? "",
+//       "createdAt": (rawData["createdAt"] is Timestamp)
+//           ? (rawData["createdAt"] as Timestamp).toDate().toIso8601String()
+//           : (rawData["createdAt"]?.toString() ?? ""),
+//     };
+//   }
+
+//   bool _isValidImageUrl(dynamic url) {
+//     if (url is! String || url.isEmpty) return false;
+//     return Uri.tryParse(url)?.isAbsolute ?? false;
+//   }
+
+//   Widget _horizontalProfileTile(Map<String, dynamic>? profile, String? docId) {
+//     final profileId = profile?["id"]?.toString() ?? docId ?? '';
+//     if (profileId.isEmpty) return const SizedBox.shrink();
+
+//     final name = profile?["name"]?.toString() ?? "Unknown";
+//     final age = profile?["age"]?.toString() ?? "-";
+//     final place = profile?["place"]?.toString() ?? "-";
+//     final photo = profile?["photo"]?.toString() ?? "";
+//     final hasPhoto = _isValidImageUrl(photo);
+
+//     return GestureDetector(
+//       onTap: () => _navigateToDetail(profileId, profile ?? {}),
+//       child: Container(
+//         width: 100,
+//         margin: const EdgeInsets.only(right: 12),
+//         child: Column(
+//           children: [
+//             Stack(
+//               children: [
+//                 CircleAvatar(
+//                   radius: 30,
+//                   backgroundImage: hasPhoto ? NetworkImage(photo) : null,
+//                   child: !hasPhoto
+//                       ? const Icon(Icons.person_4, size: 30)
+//                       : null,
+//                 ),
+//                 if (_loggedInUser != null)
+//                   Positioned(
+//                     top: 0,
+//                     right: 0,
+//                     child: GestureDetector(
+//                       onTap: () => _toggleFavorite(profileId),
+//                       child: Icon(
+//                         _isFavorite(profileId)
+//                             ? Icons.favorite
+//                             : Icons.favorite_border,
+//                         color: Colors.red,
+//                         size: 20,
+//                       ),
+//                     ),
+//                   ),
+//               ],
+//             ),
+//             const SizedBox(height: 6),
+//             Text(
+//               name,
+//               maxLines: 1,
+//               overflow: TextOverflow.ellipsis,
+//               textAlign: TextAlign.center,
+//               style: const TextStyle(fontWeight: FontWeight.bold),
+//             ),
+//             Text(
+//               "$age | $place",
+//               maxLines: 1,
+//               overflow: TextOverflow.ellipsis,
+//               style: const TextStyle(fontSize: 10, color: Colors.grey),
+//               textAlign: TextAlign.center,
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+
+//   Widget _buildFavoriteCarousel() {
+//     if (_loggedInUser == null || _favorites.isEmpty)
+//       return const SizedBox.shrink();
+
+//     return Column(
+//       crossAxisAlignment: CrossAxisAlignment.start,
+//       children: [
+//         const Padding(
+//           padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+//           child: Text(
+//             "My Favorites",
+//             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+//           ),
+//         ),
+//         SizedBox(
+//           height: 120,
+//           child: ListView.builder(
+//             scrollDirection: Axis.horizontal,
+//             padding: const EdgeInsets.symmetric(horizontal: 16),
+//             itemCount: _favorites.length,
+//             itemBuilder: (context, index) {
+//               final profileId = _favorites[index].toString();
+//               if (profileId.isEmpty) return const SizedBox.shrink();
+
+//               final profile = _recentlyViewed.firstWhere(
+//                 (p) => p["id"]?.toString() == profileId,
+//                 orElse: () => {
+//                   "name": "Favorite",
+//                   "photo": "",
+//                   "age": "-",
+//                   "place": "-",
+//                   "id": profileId,
+//                 },
+//               );
+//               return _horizontalProfileTile(profile, profileId);
+//             },
+//           ),
+//         ),
+//         const Divider(),
+//       ],
+//     );
+//   }
+
+//   Widget _buildRecentlyViewed() {
+//     if (_loggedInUser == null || _recentlyViewed.isEmpty)
+//       return const SizedBox.shrink();
+
+//     final displayRecentlyViewed = _recentlyViewed.where((profile) {
+//       final profileGender = (profile['gender']?.toString().toLowerCase() ?? '');
+//       return profileGender.isNotEmpty && profileGender != _userGender;
+//     }).toList();
+
+//     if (displayRecentlyViewed.isEmpty) return const SizedBox.shrink();
+
+//     return Column(
+//       crossAxisAlignment: CrossAxisAlignment.start,
+//       children: [
+//         const Padding(
+//           padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+//           child: Text(
+//             "Recently Viewed (Last 5)",
+//             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+//           ),
+//         ),
+//         SizedBox(
+//           height: 125,
+//           child: ListView.builder(
+//             scrollDirection: Axis.horizontal,
+//             padding: const EdgeInsets.symmetric(horizontal: 16),
+//             itemCount: displayRecentlyViewed.length,
+//             itemBuilder: (context, index) {
+//               final profile = displayRecentlyViewed[index];
+//               final profileId = profile["id"]?.toString() ?? '';
+//               return _horizontalProfileTile(profile, profileId);
+//             },
+//           ),
+//         ),
+//         const Divider(),
+//       ],
+//     );
+//   }
+
+//   Widget _buildRecommendations(List<QueryDocumentSnapshot> allProfiles) {
+//     if (_loggedInUser == null) return const SizedBox.shrink();
+//     final now = DateTime.now();
+//     final fourDaysAgo = now.subtract(const Duration(days: 4));
+
+//     final viewedIds = _viewedRecommended
+//         .where((v) {
+//           final viewedAt = DateTime.tryParse(v["viewedAt"] ?? "") ?? now;
+//           return viewedAt.isAfter(fourDaysAgo);
+//         })
+//         .map((v) => v['id'])
+//         .toSet();
+
+//     final minAge = _currentAgeRange.start.round();
+//     final maxAge = _currentAgeRange.end.round();
+
+//     final recommendedProfiles = allProfiles.where((doc) {
+//       final data = doc.data() as Map<String, dynamic>? ?? {};
+//       final gender = (data['gender']?.toString() ?? '').toLowerCase();
+//       final id = doc.id;
+//       final profileAge = int.tryParse(data['age']?.toString() ?? "0") ?? 0;
+
+//       if (gender == _userGender) return false;
+//       if (viewedIds.contains(id)) return false;
+//       if (profileAge < minAge || profileAge > maxAge) return false;
+
+//       return true;
+//     }).toList();
+
+//     recommendedProfiles.sort((a, b) {
+//       final dataA = a.data() as Map<String, dynamic>? ?? {};
+//       final dataB = b.data() as Map<String, dynamic>? ?? {};
+//       final userPlace = (_loggedInUser!['place']?.toString() ?? '')
+//           .toLowerCase();
+
+//       final aFav = _isFavorite(a.id) ? 1 : 0;
+//       final bFav = _isFavorite(b.id) ? 1 : 0;
+//       if (aFav != bFav) return bFav - aFav;
+
+//       int score(String place) {
+//         place = place.toLowerCase();
+//         if (place == userPlace) return 3;
+//         if (userPlace.isNotEmpty && place.contains(userPlace)) return 2;
+//         return 0;
+//       }
+
+//       return score(dataB['place']?.toString() ?? '') -
+//           score(dataA['place']?.toString() ?? '');
+//     });
+
+//     if (recommendedProfiles.isEmpty) return const SizedBox.shrink();
+
+//     return Column(
+//       crossAxisAlignment: CrossAxisAlignment.start,
+//       children: [
+//         const Padding(
+//           padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+//           child: Text(
+//             "Recommended for You",
+//             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+//           ),
+//         ),
+//         SizedBox(
+//           height: 125,
+//           child: ListView.builder(
+//             scrollDirection: Axis.horizontal,
+//             padding: const EdgeInsets.symmetric(horizontal: 16),
+//             itemCount: recommendedProfiles.length,
+//             itemBuilder: (context, index) {
+//               final doc = recommendedProfiles[index];
+//               return _horizontalProfileTile(
+//                 doc.data() as Map<String, dynamic>? ?? {},
+//                 doc.id,
+//               );
+//             },
+//           ),
+//         ),
+//         const Divider(),
+//       ],
+//     );
+//   }
+
+//   // ------------------- Remaining Views Indicator -------------------
+
+//   Widget _buildRemainingViewsIndicator() {
+//     if (_loggedInUser == null) return const SizedBox.shrink();
+
+//     // The user is always subject to the limit defined by 'accessibleProfiles'
+//     final remaining = _userViewLimit - _userViewCount;
+//     Color color;
+
+//     if (remaining <= 0) {
+//       color = Colors.red;
+//     } else if (remaining <= _userViewLimit * 0.25) {
+//       color = Colors.orange;
+//     } else {
+//       color = Colors.green;
+//     }
+
+//     return Tooltip(
+//       message: "Profiles remaining to view",
+//       child: Container(
+//         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+//         decoration: BoxDecoration(
+//           color: color.withOpacity(0.1),
+//           borderRadius: BorderRadius.circular(20),
+//           border: Border.all(color: color, width: 1.5),
+//         ),
+//         child: Text(
+//           '$remaining views left',
+//           style: TextStyle(
+//             color: color,
+//             fontWeight: FontWeight.bold,
+//             fontSize: 12,
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final theme = Theme.of(context);
+
+//     return Scaffold(
+//       appBar: AppBar(
+//         automaticallyImplyLeading: false,
+//         title: const Text("Matrimony"),
+//         actions: [
+//           IconButton(
+//             icon: Icon(
+//               Icons.headphones_outlined,
+//               color: theme.colorScheme.onPrimary,
+//             ),
+//             onPressed: () {
+//               Navigator.push(
+//                 context,
+//                 MaterialPageRoute(
+//                   builder: (context) => ContactSupportScreen(
+//                     _loggedInUser?['id']?.toString() ?? 'general',
+//                   ),
+//                 ),
+//               );
+//             },
+//           ),
+//           if (_loggedInUser != null) ...[
+//             Padding(
+//               padding: const EdgeInsets.only(right: 8.0),
+//               child: Center(child: _buildRemainingViewsIndicator()),
+//             ),
+//             const SizedBox(width: 5),
+//             Text(
+//               _loggedInUser!['name']?.toString() ?? 'User',
+//               style: TextStyle(
+//                 fontWeight: FontWeight.bold,
+//                 color: theme.colorScheme.onPrimary,
+//               ),
+//             ),
+//             IconButton(
+//               icon: const Icon(Icons.logout, color: Colors.redAccent),
+//               onPressed: _logout,
+//             ),
+//           ] else
+//             IconButton(
+//               icon: const Icon(Icons.person),
+//               onPressed: _requireLogin,
+//             ),
+//         ],
+//       ),
+//       body: SafeArea(
+//         child: SingleChildScrollView(
+//           physics: const BouncingScrollPhysics(),
+//           child: Column(
+//             crossAxisAlignment: CrossAxisAlignment.start,
+//             children: [
+//               // Search Bar
+//               Padding(
+//                 padding: const EdgeInsets.symmetric(
+//                   horizontal: 16,
+//                   vertical: 8,
+//                 ),
+//                 child: TextField(
+//                   controller: _searchController,
+//                   decoration: InputDecoration(
+//                     hintText: "Search by name, location...",
+//                     prefixIcon: Icon(
+//                       Icons.search,
+//                       color: theme.colorScheme.primary,
+//                     ),
+//                     suffixIcon: _searchController.text.isNotEmpty
+//                         ? IconButton(
+//                             icon: Icon(
+//                               Icons.clear,
+//                               color: theme.colorScheme.onSurface.withOpacity(
+//                                 0.6,
+//                               ),
+//                             ),
+//                             onPressed: () {
+//                               _searchController.clear();
+//                             },
+//                           )
+//                         : null,
+//                     filled: true,
+//                     fillColor: theme.colorScheme.surfaceContainerHighest,
+//                     border: OutlineInputBorder(
+//                       borderRadius: BorderRadius.circular(30),
+//                       borderSide: BorderSide.none,
+//                     ),
+//                   ),
+//                 ),
+//               ),
+
+//               // **Age Gap Slider**
+//               if (_loggedInUser != null)
+//                 Padding(
+//                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+//                   child: Column(
+//                     crossAxisAlignment: CrossAxisAlignment.start,
+//                     children: [
+//                       Text(
+//                         "Age Range: ${_currentAgeRange.start.round()} - ${_currentAgeRange.end.round()}",
+//                         style: const TextStyle(
+//                           fontWeight: FontWeight.bold,
+//                           fontSize: 14,
+//                         ),
+//                       ),
+//                       RangeSlider(
+//                         values: _currentAgeRange,
+//                         min: _minSliderAge,
+//                         max: _maxSliderAge,
+//                         divisions: (_maxSliderAge - _minSliderAge).round(),
+//                         labels: RangeLabels(
+//                           _currentAgeRange.start.round().toString(),
+//                           _currentAgeRange.end.round().toString(),
+//                         ),
+//                         onChanged: (RangeValues values) {
+//                           setState(() {
+//                             _currentAgeRange = values;
+//                           });
+//                         },
+//                       ),
+//                     ],
+//                   ),
+//                 ),
+
+//               // Favorites Carousel
+//               _buildFavoriteCarousel(),
+
+//               StreamBuilder<QuerySnapshot>(
+//                 stream: FirebaseFirestore.instance
+//                     .collection('matrimony')
+//                     .orderBy('createdAt', descending: true)
+//                     .snapshots(),
+//                 builder: (context, snapshot) {
+//                   if (!snapshot.hasData) {
+//                     return const Center(child: CircularProgressIndicator());
+//                   }
+//                   final allProfiles = snapshot.data!.docs;
+
+//                   // Filtering logic for the main grid
+//                   final filteredProfiles = allProfiles.where((doc) {
+//                     final data = doc.data() as Map<String, dynamic>? ?? {};
+//                     final name = (data['name']?.toString() ?? '').toLowerCase();
+//                     final place = (data['place']?.toString() ?? '')
+//                         .toLowerCase();
+//                     final gender = (data['gender']?.toString() ?? '')
+//                         .toLowerCase();
+//                     final profileAge =
+//                         int.tryParse(data['age']?.toString() ?? "0") ?? 0;
+
+//                     // 1. Search filter
+//                     final isSearchMatch =
+//                         (_searchQuery.isEmpty ||
+//                         name.contains(_searchQuery) ||
+//                         place.contains(_searchQuery));
+
+//                     // 2. Gender filter
+//                     final isOppositeGender =
+//                         gender.isNotEmpty && gender != _userGender;
+
+//                     // 3. Age Gap filter (Only applies when not searching)
+//                     final isAgeMatch =
+//                         _searchQuery.isNotEmpty ||
+//                         (profileAge >= _currentAgeRange.start.round() &&
+//                             profileAge <= _currentAgeRange.end.round());
+
+//                     return isSearchMatch && isOppositeGender && isAgeMatch;
+//                   }).toList();
+
+//                   return Column(
+//                     crossAxisAlignment: CrossAxisAlignment.start,
+//                     children: [
+//                       // Hide sections when searching
+//                       if (_searchQuery.isEmpty) _buildRecentlyViewed(),
+//                       if (_searchQuery.isEmpty)
+//                         _buildRecommendations(allProfiles),
+
+//                       Padding(
+//                         padding: const EdgeInsets.all(16.0),
+//                         child: GridView.builder(
+//                           // **Layout Fixes**
+//                           shrinkWrap: true,
+//                           physics: const NeverScrollableScrollPhysics(),
+//                           itemCount: filteredProfiles.length,
+//                           gridDelegate:
+//                               const SliverGridDelegateWithFixedCrossAxisCount(
+//                                 crossAxisCount: 2,
+//                                 childAspectRatio: 0.75,
+//                                 mainAxisSpacing: 16,
+//                                 crossAxisSpacing: 16,
+//                               ),
+//                           itemBuilder: (context, index) {
+//                             final doc = filteredProfiles[index];
+//                             final data =
+//                                 doc.data() as Map<String, dynamic>? ?? {};
+//                             final profileId = doc.id;
+//                             final name = data['name']?.toString() ?? "Unknown";
+//                             final age = data['age']?.toString() ?? "-";
+//                             final place = data['place']?.toString() ?? "-";
+//                             final photo = data['photo']?.toString() ?? "";
+//                             final hasPhoto = _isValidImageUrl(photo);
+
+//                             return GestureDetector(
+//                               onTap: () => _navigateToDetail(profileId, data),
+//                               child: Card(
+//                                 clipBehavior: Clip.antiAlias,
+//                                 child: Column(
+//                                   crossAxisAlignment: CrossAxisAlignment.start,
+//                                   children: [
+//                                     Expanded(
+//                                       child: Stack(
+//                                         fit: StackFit.expand,
+//                                         children: [
+//                                           hasPhoto
+//                                               ? Image.network(
+//                                                   photo,
+//                                                   fit: BoxFit.cover,
+//                                                 )
+//                                               : Center(
+//                                                   child: Icon(
+//                                                     Icons.person_4,
+//                                                     size: 60,
+//                                                     color: theme
+//                                                         .colorScheme
+//                                                         .onSurface
+//                                                         .withOpacity(0.5),
+//                                                   ),
+//                                                 ),
+//                                           if (_loggedInUser != null)
+//                                             Positioned(
+//                                               top: 4,
+//                                               right: 4,
+//                                               child: GestureDetector(
+//                                                 onTap: () =>
+//                                                     _toggleFavorite(profileId),
+//                                                 child: Icon(
+//                                                   _isFavorite(profileId)
+//                                                       ? Icons.favorite
+//                                                       : Icons.favorite_border,
+//                                                   color: Colors.red,
+//                                                   size: 24,
+//                                                 ),
+//                                               ),
+//                                             ),
+//                                         ],
+//                                       ),
+//                                     ),
+//                                     Padding(
+//                                       padding: const EdgeInsets.fromLTRB(
+//                                           8, 8, 8, 4),
+//                                       child: Column(
+//                                         crossAxisAlignment:
+//                                             CrossAxisAlignment.start,
+//                                         children: [
+//                                           Text(
+//                                             name,
+//                                             style: const TextStyle(
+//                                                 fontWeight: FontWeight.bold),
+//                                             maxLines: 1,
+//                                             overflow: TextOverflow.ellipsis,
+//                                           ),
+//                                           Text(
+//                                             "$age | $place",
+//                                             style: const TextStyle(
+//                                                 fontSize: 12,
+//                                                 color: Colors.grey),
+//                                             maxLines: 1,
+//                                             overflow: TextOverflow.ellipsis,
+//                                           ),
+//                                         ],
+//                                       ),
+//                                     ),
+//                                   ],
+//                                 ),
+//                               ),
+//                             );
+//                           },
+//                         ),
+//                       ),
+//                     ],
+//                   );
+//                 },
+//               ),
+//             ],
+//           ),
+//         ),
+//         // floatingActionButton: _loggedInUser == null
+//         //     ? null
+//         //     : FloatingActionButton(
+//         //         onPressed: () {
+//         //           Navigator.push(
+//         //             context,
+//         //             MaterialPageRoute(
+//         //               builder: (context) => const MatriSubmitScreen(userId: '',),
+//         //             ),
+//         //           ).then((value) {
+//         //             if (value == true) {
+//         //               setState(() {});
+//         //             }
+//         //           });
+//         //         },
+//         //         child: const Icon(Icons.add),
+//         //       ),
+//       ),
+//     );
+//   }
+// }
+
+
+
+
+
+
+
 this is the structure >> lib/
 │
 ├── main.dart   done           # App entry point

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class MatriSubmitScreen extends StatefulWidget {
-  const MatriSubmitScreen({super.key});
+  const MatriSubmitScreen({super.key, String? loggedInUserId});
 
   @override
   State<MatriSubmitScreen> createState() => _MatriSubmitScreenState();
