@@ -1,31 +1,102 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:kmg/notifiers/saved_ads_notifier.dart';
 import 'package:kmg/screens/admin/Add_Classified_FAB.dart';
 import 'package:kmg/screens/settings/sign_in_screen.dart';
 import 'package:kmg/utils/user_name_fetcher.dart' as user_utils;
 import 'package:url_launcher/url_launcher.dart';
-// import 'package:kmg/theme/app_theme.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
-class AdDetailScreen extends StatelessWidget {
+// ⭐️ NEW IMPORTS for State Management
+import 'package:provider/provider.dart';
+// import 'package:kmg/providers/saved_ads_notifier.dart';
+
+class AdDetailScreen extends StatefulWidget {
   final DocumentSnapshot adDoc;
+  final Map<String, dynamic> adData;
+  final String adId;
+  final String userId;
   final bool isAdmin;
 
   const AdDetailScreen({
     super.key,
     required this.adDoc,
+    required this.adData,
+    required this.adId,
+    required this.userId,
     this.isAdmin = false,
-    required String adId,
-    required Map<String, dynamic> adData,
-    required String userId,
   });
 
   @override
+  State<AdDetailScreen> createState() => _AdDetailScreenState();
+}
+
+class _AdDetailScreenState extends State<AdDetailScreen> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  // ❌ REMOVED: Set<String> savedAdIds = {};
+  // ❌ REMOVED: bool isLoadingSaved = true;
+
+  // ❌ REMOVED: initState() and the _loadSavedAds() function entirely!
+
+  // The logic for toggling the save status now calls the Notifier.
+  void _handleToggleSaveAd() {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      _showSignInDialog();
+      return;
+    }
+
+    // 🚀 Call the global function on the Notifier
+    Provider.of<SavedAdsNotifier>(context, listen: false).toggleSaveAd(
+      adId: widget.adDoc.id,
+      // Pass the adData map directly as required by the Notifier's toggleSaveAd function
+      adData: widget.adData,
+      context: context,
+    );
+  }
+
+  void _showSignInDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Sign in required"),
+        content: const Text("To save this ad, please sign in."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const SignInScreen(fromFab: false),
+                ),
+              );
+            },
+            child: const Text("Sign In"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final ad = adDoc.data() as Map<String, dynamic>? ?? {};
+    // ⭐️ 1. WATCH the SavedAdsNotifier to react to global changes (like signing in or toggling save)
+    final savedAdsNotifier = context.watch<SavedAdsNotifier>();
+
+    // ⭐️ 2. Get status directly from the notifier
+    final bool isSaveStatusLoading = savedAdsNotifier.isLoading;
+    final bool isSaved = savedAdsNotifier.savedAdIds.contains(widget.adDoc.id);
+
+    final ad = widget.adDoc.data() as Map<String, dynamic>? ?? {};
     final expiryDate = ad['expiryDate'] != null
         ? (ad['expiryDate'] as Timestamp).toDate()
         : null;
@@ -36,7 +107,7 @@ class AdDetailScreen extends StatelessWidget {
     final soldStatus = (ad['soldStatus'] ?? 'unsold').toString();
     final isSold = soldStatus == 'sold';
 
-    if (!isAdmin && (ad['type'] ?? '') == 'Banner') {
+    if (!widget.isAdmin && (ad['type'] ?? '') == 'Banner') {
       return Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: Center(
@@ -62,7 +133,7 @@ class AdDetailScreen extends StatelessWidget {
         ad['description']?.toString() ?? 'No description provided.';
     final contact = ad['contact']?.toString();
 
-    final currentUser = FirebaseAuth.instance.currentUser;
+    final currentUser = _auth.currentUser;
     final isSignedIn = currentUser != null;
 
     return Scaffold(
@@ -75,123 +146,46 @@ class AdDetailScreen extends StatelessWidget {
           title,
           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
         ),
-
-        // Save/Unsave
         actions: [
+          // ⭐️ OPTIMIZED: Uses global state, not local future/loading flag
           if (isSignedIn)
-            StreamBuilder<DocumentSnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(currentUser.uid)
-                  .collection('saved_ads')
-                  .doc(adDoc.id)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                final isSaved = snapshot.data?.exists ?? false;
-                return IconButton(
-                  icon: Icon(
-                    isSaved ? Icons.bookmark : Icons.bookmark_border,
-                    color: isSaved ? Colors.yellow.shade700 : Colors.white,
-                  ),
-                  tooltip: isSaved ? 'Remove from saved' : 'Save this ad',
-                  onPressed: () async {
-                    try {
-                      final savedRef = FirebaseFirestore.instance
-                          .collection('users')
-                          .doc(currentUser.uid)
-                          .collection('saved_ads')
-                          .doc(adDoc.id);
-
-                      if (isSaved) {
-                        await savedRef.delete();
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Ad removed from saved."),
-                            ),
-                          );
-                        }
-                      } else {
-                        await savedRef.set({
-                          'adId': adDoc.id,
-                          'title': ad['title'] ?? '',
-                          'category': ad['category'] ?? '',
-                          'place': ad['place'] ?? '',
-                          'images': ad['images'] ?? [],
-                          'savedAt': FieldValue.serverTimestamp(),
-                        });
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Ad saved successfully."),
-                            ),
-                          );
-                        }
-                      }
-                    } catch (e, st) {
-                      debugPrint("Error saving ad: $e\n$st");
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Failed to save the ad."),
-                          ),
-                        );
-                      }
-                    }
-                  },
-                );
-              },
+            IconButton(
+              icon: isSaveStatusLoading
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : Icon(
+                      isSaved ? Icons.bookmark : Icons.bookmark_border,
+                      color: isSaved ? Colors.yellow.shade700 : Colors.white,
+                    ),
+              tooltip: isSaved ? 'Remove from saved' : 'Save this ad',
+              // Use the new simplified handler
+              onPressed: isSaveStatusLoading ? null : _handleToggleSaveAd,
             )
           else
             IconButton(
               icon: const Icon(Icons.bookmark_border),
               tooltip: 'Save this ad',
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: const Text("Sign in required"),
-                    content: const Text("To save this ad, please sign in."),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        child: const Text("Cancel"),
-                      ),
-                      ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  const SignInScreen(fromFab: false),
-                            ),
-                          );
-                          // ✅ link to SignInScreen
-                        },
-                        child: const Text("Sign In"),
-                      ),
-                    ],
-                  ),
-                );
-              },
+              onPressed: _showSignInDialog,
             ),
 
-          // Share
+          // Share and Admin Actions remain the same...
           IconButton(
             icon: const Icon(Icons.share),
             tooltip: 'Share',
             onPressed: () async {
               final safeTitle = title.replaceAll('"', "'");
               final shareText =
-                  'Check out this ad "$safeTitle" on KMG app: https://kmg.example.com/ad/${adDoc.id ?? ''}';
+                  'Check out this ad "$safeTitle" on KMG app: https://kmg.example.com/ad/${widget.adDoc.id ?? ''}';
 
               if (kIsWeb) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text("Sharing is not supported on web platform."),
-                  ),
-                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        "Sharing is not supported on web platform.",
+                      ),
+                    ),
+                  );
+                }
                 return;
               }
 
@@ -208,26 +202,29 @@ class AdDetailScreen extends StatelessWidget {
             },
           ),
 
-          // Admin Actions
-          if (isAdmin)
+          if (widget.isAdmin)
             PopupMenuButton<String>(
               color: Theme.of(context).cardColor,
               elevation: 8,
               onSelected: (value) async {
                 if (value == 'edit') {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => AddClassifiedFAB(
-                        type: type,
-                        userId: userId,
-                        adId: adDoc.id,
-                        adOwnerId: ad['userId'], // ✅ added line
+                  if (context.mounted) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AddClassifiedFAB(
+                          type: type,
+                          userId: userId,
+                          adId: widget.adDoc.id,
+                          adOwnerId: ad['userId'],
+                        ),
                       ),
-                    ),
-                  );
+                    );
+                  }
                 } else if (value == 'extend') {
-                  _showExtendDialog(context, adDoc.id, ad);
+                  if (context.mounted) {
+                    _showExtendDialog(context, widget.adDoc.id, ad);
+                  }
                 } else if (value == 'delete') {
                   final confirm = await showDialog<bool>(
                     context: context,
@@ -273,7 +270,7 @@ class AdDetailScreen extends StatelessWidget {
                     try {
                       await FirebaseFirestore.instance
                           .collection("classifieds")
-                          .doc(adDoc.id)
+                          .doc(widget.adDoc.id)
                           .delete();
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -349,7 +346,6 @@ class AdDetailScreen extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      // 💡 Replaced static color with dynamic theme primary color
                       color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
@@ -362,9 +358,7 @@ class AdDetailScreen extends StatelessWidget {
               style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.w800,
-                color: Theme.of(
-                  context,
-                ).textTheme.bodyLarge?.color, // Made text color theme-aware
+                color: Theme.of(context).textTheme.bodyLarge?.color,
               ),
             ),
             const SizedBox(height: 16),
@@ -377,14 +371,11 @@ class AdDetailScreen extends StatelessWidget {
                   scrollDirection: Axis.horizontal,
                   itemCount: images.length,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-
-                  // centers list
                   itemBuilder: (context, index) {
                     final imageUrl = images[index];
                     return Center(
                       child: GestureDetector(
                         onTap: () {
-                          // ✅ Full screen view with watermark + close (X)
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -407,8 +398,6 @@ class AdDetailScreen extends StatelessWidget {
                                         ),
                                       ),
                                     ),
-
-                                    // ✅ Watermark on both corners in full screen
                                     Positioned.fill(
                                       child: Align(
                                         alignment: Alignment.center,
@@ -416,30 +405,19 @@ class AdDetailScreen extends StatelessWidget {
                                           padding: const EdgeInsets.only(
                                             right: 200,
                                             top: 100,
-                                          ), // 👈 adjust here
+                                          ),
                                           child: Text(
                                             'KMG',
                                             style: TextStyle(
-                                              color: Colors.white.withOpacity(
-                                                0.5,
-                                              ),
+                                              color: Colors.white.withAlpha(77),
                                               fontWeight: FontWeight.bold,
                                               fontSize: 36,
                                               letterSpacing: 2,
-                                              shadows: const [
-                                                Shadow(
-                                                  blurRadius: 6,
-                                                  color: Colors.black,
-                                                  offset: Offset(2, 2),
-                                                ),
-                                              ],
                                             ),
                                           ),
                                         ),
                                       ),
                                     ),
-
-                                    // ✅ Close (X) button
                                     Positioned(
                                       top: 40,
                                       right: 20,
@@ -460,12 +438,8 @@ class AdDetailScreen extends StatelessWidget {
                         },
                         child: Stack(
                           children: [
-                            // 👇 Move image slightly (adjust offset to left/right as needed)
                             Transform.translate(
-                              offset: const Offset(
-                                20,
-                                0,
-                              ), // +10 → move RIGHT | -10 → move LEFT
+                              offset: const Offset(20, 0),
                               child: Container(
                                 margin: const EdgeInsets.only(right: 12),
                                 width: 300,
@@ -494,8 +468,6 @@ class AdDetailScreen extends StatelessWidget {
                                 ),
                               ),
                             ),
-
-                            // ✅ Watermark (bottom-left)
                             Positioned(
                               bottom: 8,
                               left: 25,
@@ -517,7 +489,7 @@ class AdDetailScreen extends StatelessWidget {
                             ),
                             if (isSold)
                               Positioned(
-                                top: 0, // Position at the top
+                                top: 0,
                                 left: 0,
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
@@ -555,9 +527,7 @@ class AdDetailScreen extends StatelessWidget {
               style: TextStyle(
                 fontSize: 16,
                 height: 1.5,
-                color: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.color, // Made text color theme-aware
+                color: Theme.of(context).textTheme.bodyMedium?.color,
               ),
             ),
             const SizedBox(height: 24),
@@ -582,10 +552,10 @@ class AdDetailScreen extends StatelessWidget {
                 "Posted On",
                 DateFormat('yyyy-MM-dd').format(postedDate),
               ),
-            if (isAdmin)
+            if (widget.isAdmin)
               _buildDetailRow(context, "Duration (days)", durationDays),
-            if (isAdmin) _buildDetailRow(context, "Status", status),
-            if (expiryDate != null && isAdmin)
+            if (widget.isAdmin) _buildDetailRow(context, "Status", status),
+            if (expiryDate != null && widget.isAdmin)
               _buildDetailRow(
                 context,
                 "Expiry Date",
@@ -595,7 +565,7 @@ class AdDetailScreen extends StatelessWidget {
             const SizedBox(height: 20),
 
             // Call / WhatsApp buttons for user
-            if (!isAdmin && contact != null)
+            if (!widget.isAdmin && contact != null)
               Center(
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -609,11 +579,13 @@ class AdDetailScreen extends StatelessWidget {
                         if (await canLaunchUrl(url)) {
                           launchUrl(url);
                         } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Cannot make a call."),
-                            ),
-                          );
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Cannot make a call."),
+                              ),
+                            );
+                          }
                         }
                       },
                     ),
@@ -629,11 +601,13 @@ class AdDetailScreen extends StatelessWidget {
                         if (await canLaunchUrl(url)) {
                           launchUrl(url);
                         } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Cannot open WhatsApp."),
-                            ),
-                          );
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Cannot open WhatsApp."),
+                              ),
+                            );
+                          }
                         }
                       },
                     ),
@@ -646,6 +620,9 @@ class AdDetailScreen extends StatelessWidget {
     );
   }
 
+  // NOTE: The helper methods (_buildGradientButton, _buildDetailRow, _showExtendDialog)
+  // are assumed to remain the same as your original code.
+
   Widget _buildGradientButton({
     required BuildContext context,
     required String label,
@@ -655,23 +632,16 @@ class AdDetailScreen extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          // 💡 Use the dynamic primary and secondary colors
           colors: [
-            Theme.of(
-              context,
-            ).colorScheme.primary, // Corresponds to AppTheme.primary
-            Theme.of(
-              context,
-            ).colorScheme.secondary, // Corresponds to AppTheme.secondary
+            Theme.of(context).colorScheme.primary,
+            Theme.of(context).colorScheme.secondary,
           ],
-          // Keep the original alignment properties
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
-            // 💡 Replaced AppTheme.primary with the dynamic primary color
             color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
             blurRadius: 10,
             offset: const Offset(0, 5),
@@ -690,11 +660,7 @@ class AdDetailScreen extends StatelessWidget {
           foregroundColor: Theme.of(context).colorScheme.onPrimary,
           textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
-        icon: Icon(
-          icon,
-          // 💡 Use the color that contrasts with the primary color
-          color: Theme.of(context).colorScheme.onPrimary,
-        ),
+        icon: Icon(icon, color: Theme.of(context).colorScheme.onPrimary),
         label: Text(label),
       ),
     );
@@ -715,8 +681,6 @@ class AdDetailScreen extends StatelessWidget {
     );
 
     if (isPrice) {
-      // ✅ FIX: The old code had a colon (:) instead of an assignment operator (=) here.
-      // We assign the theme's secondary color directly.
       valueColor = Theme.of(context).colorScheme.secondary;
       valueStyle = valueStyle.copyWith(
         fontWeight: FontWeight.w800,
@@ -726,35 +690,26 @@ class AdDetailScreen extends StatelessWidget {
       valueColor = Colors.red.shade700;
     }
 
-    return // Assumes this widget is inside a build method or receives a BuildContext.
-    Container(
+    return Container(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
       margin: const EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
-        // 💡 1. Replace AppTheme.background with the dynamic background/card color
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-
-        // 💡 2. Make border color theme-aware for better visibility in Dark Mode
         border: Border.all(
           color: Theme.of(context).brightness == Brightness.dark
-              ? Colors
-                    .grey
-                    .shade700 // Dark mode border
-              : Colors.grey.shade200, // Light mode border
+              ? Colors.grey.shade700
+              : Colors.grey.shade200,
         ),
-
-        // 💡 3. Make BoxShadow theme-aware (or remove in Dark Mode for simplicity)
         boxShadow: Theme.of(context).brightness == Brightness.light
             ? [
                 BoxShadow(
-                  // Shadow is subtle, using a transparent black/grey works for both
                   color: Colors.grey.withOpacity(0.05),
                   blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),
               ]
-            : null, // Box shadows often look bad on pure black dark mode
+            : null,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -766,7 +721,6 @@ class AdDetailScreen extends StatelessWidget {
               style: TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 16,
-                // 💡 4. Replace static 'Colors.black' with the primary text color
                 color: Theme.of(context).textTheme.bodyLarge?.color,
               ),
             ),
@@ -775,8 +729,6 @@ class AdDetailScreen extends StatelessWidget {
           Expanded(
             child: Text(
               value ?? "-",
-              // Assumes 'valueStyle' and 'valueColor' are defined elsewhere,
-              // but if 'valueColor' was static, it must be replaced here too.
               style: valueStyle.copyWith(color: valueColor),
             ),
           ),
@@ -801,9 +753,7 @@ class AdDetailScreen extends StatelessWidget {
           title: Text(
             "Extend ${ad['title'] ?? 'Ad'}",
             style: TextStyle(
-              // 💡 Removed 'const' because the style is no longer constant
               fontWeight: FontWeight.bold,
-              // 💡 Replaced static color with dynamic theme color
               color: Theme.of(context).colorScheme.primary,
             ),
           ),
@@ -820,7 +770,6 @@ class AdDetailScreen extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 decoration: BoxDecoration(
                   border: Border.all(
-                    // 💡 Replaced static color with dynamic theme primary color
                     color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
@@ -834,7 +783,6 @@ class AdDetailScreen extends StatelessWidget {
                             value: e,
                             child: Text(
                               "$e days",
-                              // 💡 Made text color theme-aware
                               style: TextStyle(
                                 color: Theme.of(context).colorScheme.onSurface,
                               ),
@@ -861,52 +809,46 @@ class AdDetailScreen extends StatelessWidget {
             ElevatedButton(
               onPressed: () async {
                 final oldExpiry = ad["expiryDate"] as Timestamp?;
-                final newExpiry = oldExpiry?.toDate().add(
-                  Duration(days: extendDays),
-                );
-                if (newExpiry != null) {
-                  try {
-                    await FirebaseFirestore.instance
-                        .collection("classifieds")
-                        .doc(adId)
-                        .update({"expiryDate": newExpiry});
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            "Ad extended by $extendDays days successfully.",
-                          ),
+                DateTime newExpiryDate;
+                if (oldExpiry == null ||
+                    oldExpiry.toDate().isBefore(DateTime.now())) {
+                  newExpiryDate = DateTime.now().add(
+                    Duration(days: extendDays),
+                  );
+                } else {
+                  newExpiryDate = oldExpiry.toDate().add(
+                    Duration(days: extendDays),
+                  );
+                }
+
+                try {
+                  await FirebaseFirestore.instance
+                      .collection('classifieds')
+                      .doc(adId)
+                      .update({
+                        'expiryDate': Timestamp.fromDate(newExpiryDate),
+                        'durationDays': (ad['durationDays'] ?? 0) + extendDays,
+                      });
+
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          "Ad extended by $extendDays days. New expiry: ${DateFormat('yyyy-MM-dd').format(newExpiryDate)}",
                         ),
-                      );
-                      Navigator.pop(ctx);
-                    }
-                  } catch (e) {
-                    debugPrint("Extend failed: $e");
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Failed to extend the ad."),
-                        ),
-                      );
-                    }
+                      ),
+                    );
+                    Navigator.pop(ctx);
+                  }
+                } catch (e) {
+                  debugPrint("Error extending ad: $e");
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Failed to extend ad.")),
+                    );
                   }
                 }
               },
-              style: ElevatedButton.styleFrom(
-                // 💡 Replaced AppTheme.primary with dynamic primary color
-                backgroundColor: Theme.of(context).colorScheme.primary,
-
-                // 💡 Replaced AppTheme.iconOnPrimary with dynamic 'onPrimary' color
-                foregroundColor: Theme.of(context).colorScheme.onPrimary,
-
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10,
-                ),
-              ),
               child: const Text("Extend"),
             ),
           ],

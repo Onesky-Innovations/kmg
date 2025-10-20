@@ -259,23 +259,51 @@ class _MatriProfileScreenState extends State<MatriProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final userData = widget.userData;
     final theme = Theme.of(context);
 
-    // Stream for real-time updates if it's the visitor's own profile
+    // 🔹 Real-time user data stream (for self profile)
     Stream<Map<String, dynamic>> userStream() {
-      if (userData['matrimonyId'] != null) {
+      final matrimonyId = widget.userData['matrimonyId'];
+      if (matrimonyId != null && matrimonyId.toString().isNotEmpty) {
         return FirebaseFirestore.instance
             .collection('matrimony')
-            .doc(userData['matrimonyId'])
+            .doc(matrimonyId)
             .snapshots()
             .map((snapshot) => snapshot.data() ?? {});
-      } else {
-        return Stream.value(userData);
       }
+      return Stream.value(widget.userData);
     }
 
-    // Fields to optionally show under "Show More Info"
+    // 🔹 Reusable labeled row
+    Widget buildRow(String label, dynamic value) {
+      String display = value?.toString() ?? 'N/A';
+      if (value is bool) display = value ? 'Yes' : 'No';
+      if (display.isEmpty) display = 'N/A';
+
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 140,
+              child: Text(
+                '$label:',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+            ),
+            Expanded(
+              child: Text(display, style: const TextStyle(fontSize: 15)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // 🔹 Build the actual profile UI
     Widget buildProfile(Map<String, dynamic> data) {
       final hiddenFields = [
         {'label': 'Expiry Date', 'value': data['expiryDate'] ?? '-'},
@@ -289,101 +317,104 @@ class _MatriProfileScreenState extends State<MatriProfileScreen> {
         },
       ];
 
-      Widget buildRow(String label, dynamic value) {
-        String display = value.toString();
-        if (value is bool) display = value ? 'Yes' : 'No';
-        if (display.isEmpty) display = 'N/A';
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 140,
-                child: Text(
-                  '$label: ',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-              Expanded(child: Text(display)),
-            ],
-          ),
-        );
-      }
-
       return Column(
         children: [
-          Center(
-            child: CircleAvatar(
-              radius: 60,
-              backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
-              backgroundImage:
-                  data['photo'] != null && data['photo'].toString().isNotEmpty
-                  ? NetworkImage(data['photo'])
-                  : null,
-              child: data['photo'] == null || data['photo'].isEmpty
-                  ? Icon(
-                      Icons.account_circle,
-                      size: 80,
-                      color: theme.colorScheme.primary,
-                    )
-                  : null,
-            ),
+          const SizedBox(height: 12),
+          CircleAvatar(
+            radius: 60,
+            backgroundColor: theme.colorScheme.primary.withOpacity(0.15),
+            backgroundImage:
+                (data['photo'] != null && data['photo'].toString().isNotEmpty)
+                ? NetworkImage(data['photo'])
+                : null,
+            child: (data['photo'] == null || data['photo'].toString().isEmpty)
+                ? Icon(
+                    Icons.account_circle,
+                    size: 80,
+                    color: theme.colorScheme.primary,
+                  )
+                : null,
           ),
           const SizedBox(height: 16),
           Text(
-            data['name'] ?? 'Unknown',
+            data['name'] ?? 'My Profile',
             style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 20),
-          if (data['age'] != null) buildRow('Age', data['age']),
-          if (data['gender'] != null) buildRow('Gender', data['gender']),
-          if (data['place'] != null) buildRow('Place', data['place']),
-          if (data['education'] != null)
-            buildRow('Education', data['education']),
-          if (data['occupation'] != null)
-            buildRow('Occupation', data['occupation']),
-          if (data['hobbies'] != null) buildRow('Hobbies', data['hobbies']),
-          if (data['about'] != null) buildRow('About', data['about']),
+          const SizedBox(height: 4),
+          Text(
+            data['gender'] ?? '',
+            style: TextStyle(color: theme.colorScheme.secondary),
+          ),
+          const Divider(height: 30),
+          buildRow('Age', data['age']),
+          buildRow('Place', data['place']),
+          buildRow('Education', data['education']),
+          buildRow('Occupation', data['occupation']),
+          buildRow('Hobbies', data['hobbies']),
+          buildRow('About', data['about']),
           const SizedBox(height: 16),
           ElevatedButton.icon(
-            onPressed: () => setState(() => _showHidden = !_showHidden),
-            icon: const Icon(Icons.info_outline),
-            label: Text(_showHidden ? 'Hide Info' : 'Show More Info'),
-          ),
-          if (_showHidden)
-            Card(
-              elevation: 2,
-              margin: const EdgeInsets.symmetric(vertical: 12),
+            style: ElevatedButton.styleFrom(
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: hiddenFields
-                      .map((f) => buildRow(f['label'], f['value']))
-                      .toList(),
-                ),
+                borderRadius: BorderRadius.circular(10),
               ),
             ),
+            onPressed: () => setState(() => _showHidden = !_showHidden),
+            icon: const Icon(Icons.info_outline),
+            label: Text(_showHidden ? 'Hide More Info' : 'Show More Info'),
+          ),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: _showHidden
+                ? Card(
+                    key: const ValueKey('hiddenInfo'),
+                    elevation: 2,
+                    margin: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: hiddenFields
+                            .map((f) => buildRow(f['label'], f['value']))
+                            .toList(),
+                      ),
+                    ),
+                  )
+                : const SizedBox.shrink(),
+          ),
         ],
       );
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(userData['name'] ?? 'Profile')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: StreamBuilder<Map<String, dynamic>>(
-          stream: userStream(),
-          builder: (context, snapshot) {
-            if (!snapshot.hasData) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            final data = snapshot.data!;
-            return buildProfile(data);
-          },
-        ),
+      appBar: AppBar(
+        title: const Text('My Matrimony Profile'),
+        centerTitle: true,
+        elevation: 1,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit),
+            tooltip: 'Edit Profile',
+            onPressed: () {
+              // TODO: Add navigation to edit screen
+            },
+          ),
+        ],
+      ),
+      body: StreamBuilder<Map<String, dynamic>>(
+        stream: userStream(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final data = snapshot.data!;
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: buildProfile(data),
+          );
+        },
       ),
     );
   }

@@ -31,7 +31,7 @@ class ThemeProvider with ChangeNotifier {
 // ───────────────────────────────────────────────────────────
 // --- Light Mode Colors ---
 const Color _lightPrimary = Color(0xFF6C37C9);
-const Color _lightSecondary = Color(0xFF512086);
+const Color _lightSecondary = Color.fromARGB(255, 119, 1, 80);
 const Color _lightSurface = Colors.white;
 const Color _lightBackground = Color(0xFFF5F6FA);
 const Color _lightText = Color(0xFF1C1C1E);
@@ -52,7 +52,7 @@ const Color _darkSubText = Color(0xFFB8B8C6);
 final ThemeData lightTheme = ThemeData(
   brightness: Brightness.light,
   useMaterial3: true,
-  primaryColor: _lightPrimary,
+  primaryColor: const Color.fromARGB(255, 90, 1, 16),
   scaffoldBackgroundColor: _lightBackground,
 
   appBarTheme: const AppBarTheme(
@@ -106,8 +106,8 @@ final ThemeData lightTheme = ThemeData(
   ),
 
   colorScheme: const ColorScheme.light(
-    primary: _lightPrimary,
-    secondary: _lightSecondary,
+    primary: Color.fromARGB(255, 164, 21, 247),
+    secondary: Color.fromARGB(255, 61, 2, 100),
     surface: _lightSurface,
     onPrimary: Colors.white,
     onSecondary: Colors.white,
@@ -133,7 +133,7 @@ final ThemeData darkTheme = ThemeData(
   brightness: Brightness.dark,
   useMaterial3: true,
   primaryColor: const Color.fromARGB(255, 37, 26, 68),
-  scaffoldBackgroundColor: const Color.fromARGB(255, 65, 65, 80),
+  scaffoldBackgroundColor: const Color.fromARGB(255, 148, 187, 10),
 
   appBarTheme: const AppBarTheme(
     elevation: 0,
@@ -186,7 +186,7 @@ final ThemeData darkTheme = ThemeData(
   ),
 
   colorScheme: const ColorScheme.dark(
-    primary: Color.fromARGB(255, 51, 51, 104),
+    primary: Color.fromARGB(255, 95, 51, 104),
     secondary: Color.fromARGB(255, 30, 22, 59),
     surface: _darkSurface,
     onPrimary: Colors.white,

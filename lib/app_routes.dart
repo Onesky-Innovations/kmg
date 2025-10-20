@@ -62,8 +62,8 @@ import 'package:flutter/widgets.dart';
 import 'package:kmg/screens/admin/manageusers.dart';
 
 // Importing all screens that are routes
-import 'package:kmg/screens/landing/landing_screen.dart';
-import 'package:kmg/screens/dashboard/dashboard_screen.dart';
+// import 'package:kmg/screens/landing/landing_screen.dart';
+import 'package:kmg/screens/ads/dashboard/dashboard_screen.dart';
 import 'package:kmg/screens/know_more/know_more_screen.dart';
 import 'package:kmg/screens/ads/Pre_add_submit_screen.dart';
 import 'package:kmg/screens/legal/faq_screen.dart';
@@ -77,7 +77,7 @@ import 'package:kmg/screens/admin/delete_requests_admin_page.dart';
 import 'package:kmg/screens/settings/settings_screen.dart';
 
 class AppRoutes {
-  static const String landing = '/';
+  // static const String landing = '/';
   static const String dashboard = '/dashboard';
   static const String knowMore = '/knowmore';
   static const String preAdSubmit = '/preadsubmit';
@@ -93,7 +93,7 @@ class AppRoutes {
   static const String manageUsers = '/manageUsers';
 
   static Map<String, WidgetBuilder> get routes => {
-    landing: (context) => const LandingPage(),
+    // landing: (context) => const LandingPage(),
     dashboard: (context) => const DashboardScreen(),
     knowMore: (context) => const KnowMoreScreen(),
     preAdSubmit: (context) => const PreAddSubmitScreen(),

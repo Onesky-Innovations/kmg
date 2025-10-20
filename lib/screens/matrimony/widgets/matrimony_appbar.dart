@@ -82,7 +82,7 @@ class _MatrimonyAppBarState extends State<MatrimonyAppBar> {
 
     return AppBar(
       automaticallyImplyLeading: false,
-      title: const Text("Matrimony"),
+      title: const Text("KMG Matrimony"),
       centerTitle: false,
       actions: [
         // Contact Support Button (Always visible)
@@ -96,7 +96,7 @@ class _MatrimonyAppBarState extends State<MatrimonyAppBar> {
               context,
               MaterialPageRoute(
                 builder: (context) => ContactSupportScreen(
-                  widget.loggedInUser?['id']?.toString() ?? 'general',
+                  // widget.loggedInUser?['id']?.toString() ?? 'guest',
                 ),
               ),
             );

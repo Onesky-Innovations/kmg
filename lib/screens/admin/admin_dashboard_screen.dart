@@ -37,7 +37,7 @@ class AdminDashboardScreen extends StatelessWidget {
 
   Future<int> _getMessagesCount() async {
     final snapshot = await FirebaseFirestore.instance
-        .collection("messages")
+        .collection("delete_requests")
         .get();
     return snapshot.size;
   }
@@ -74,7 +74,7 @@ class AdminDashboardScreen extends StatelessWidget {
                     future: _getUsersCount(), // Moved Users to the top
                     builder: (context, snapshot) {
                       return _StatsCard(
-                        title: "Total Users",
+                        title: "Total Classified Users",
                         icon: Icons.groups_rounded,
                         count: snapshot.data ?? 0,
                         isLoading:
@@ -128,12 +128,13 @@ class AdminDashboardScreen extends StatelessWidget {
                     future: _getMessagesCount(),
                     builder: (context, snapshot) {
                       return _StatsCard(
-                        title: "Total Messages",
+                        title: "Delete Requests",
                         icon: Icons.mail_outline_rounded,
                         count: snapshot.data ?? 0,
                         isLoading:
                             snapshot.connectionState == ConnectionState.waiting,
                         error: snapshot.hasError,
+                        iconColor: Colors.red,
                       );
                     },
                   ),
@@ -179,8 +180,7 @@ class AdminDashboardScreen extends StatelessWidget {
                 _DashboardTile(
                   icon: Icons.people_outline_rounded,
                   title: "Manage Users",
-                  onTap: () =>
-                      Navigator.pushNamed(context, "/ManageUsersScreen"),
+                  onTap: () => Navigator.pushNamed(context, "/manageUsers"),
                 ),
                 _DashboardTile(
                   icon: Icons.notifications_none_rounded,
@@ -221,6 +221,7 @@ class _StatsCard extends StatelessWidget {
   final bool isLoading;
   final bool error;
   final IconData icon;
+  final Color? iconColor;
 
   const _StatsCard({
     required this.title,
@@ -228,12 +229,14 @@ class _StatsCard extends StatelessWidget {
     this.isLoading = false,
     this.error = false,
     required this.icon,
+    this.iconColor,
   });
 
   @override
   Widget build(BuildContext context) {
     final primaryColor = Theme.of(context).colorScheme.primary;
     final onSurfaceColor = Theme.of(context).colorScheme.onSurface;
+    final finalIconColor = iconColor ?? primaryColor;
 
     return Card(
       elevation: 4, // Higher elevation for prominence
@@ -245,7 +248,7 @@ class _StatsCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(icon, size: 28, color: primaryColor),
+                Icon(icon, size: 28, color: finalIconColor),
                 // Display count or loading indicator
                 error
                     ? Icon(

@@ -678,7 +678,7 @@ import 'package:kmg/screens/ads/MyAdsScreen.dart';
 import 'package:kmg/screens/legal/contact_support_screen.dart';
 import 'package:kmg/screens/legal/privacy_screen.dart';
 import 'package:kmg/screens/legal/terms_screen.dart';
-import 'package:kmg/screens/saved/saveditems.dart';
+import 'package:kmg/screens/ads/saved/saveditems.dart';
 import 'package:kmg/screens/legal/faq_screen.dart';
 import 'package:kmg/providers/theme_provider.dart'; // Keep this import
 import '../admin/admin_dashboard_screen.dart';
@@ -1041,9 +1041,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => ContactSupportScreen('general'),
-                      ),
+                      MaterialPageRoute(builder: (_) => ContactSupportScreen()),
                     );
                   },
                 ),
@@ -1095,7 +1093,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
-                      onPressed: _logout,
+                      onPressed: () async {
+                        final shouldLogout = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text("Confirm Logout"),
+                            content: const Text(
+                              "Are you sure you want to log out?",
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text("Cancel"),
+                              ),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red,
+                                ),
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text("Log Out"),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (shouldLogout == true) {
+                          _logout(); // Call your existing logout function
+                        }
+                      },
                       icon: const Icon(Icons.logout_rounded),
                       label: Text(
                         "Log Out",

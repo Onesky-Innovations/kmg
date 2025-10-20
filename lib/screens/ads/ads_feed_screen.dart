@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:kmg/screens/ads/ad_detail_screen.dart';
@@ -103,11 +104,15 @@ class AdsFeedScreen extends StatelessWidget {
                 leading: ad["images"] != null && ad["images"].isNotEmpty
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
-                          ad["images"][0],
+                        child: CachedNetworkImage(
+                          imageUrl: ad["images"][0],
                           width: 60,
                           height: 60,
                           fit: BoxFit.cover,
+                          placeholder: (context, url) =>
+                              Container(color: Colors.grey[300]),
+                          errorWidget: (context, url, error) =>
+                              const Icon(Icons.image_not_supported),
                         ),
                       )
                     : const Icon(Icons.image, size: 40),

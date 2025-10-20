@@ -11,9 +11,9 @@ import 'package:kmg/widgets/custom_app_bar.dart';
 import 'package:kmg/widgets/category_chips.dart';
 import 'package:kmg/widgets/auto_scroll_ad.dart';
 
-import '../ads/ads_feed_screen.dart';
-import '../ads/featured.dart';
-import '../matrimony/matri_screens/matrimony_screen.dart';
+import '../ads_feed_screen.dart';
+import '../featured.dart';
+import '../../matrimony/matri_screens/matrimony_screen.dart';
 import 'package:circle_bottom_navigation/widgets/tab_data.dart';
 
 class DashboardScreen extends StatefulWidget {

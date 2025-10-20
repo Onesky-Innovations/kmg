@@ -17,7 +17,7 @@ class _AddSubmitScreenState extends State<PreAddSubmitScreen> {
   final _descriptionController = TextEditingController();
 
   // Admin WhatsApp number
-  final String adminPhone = "917907708822";
+  final String adminPhone = "919744422238";
 
   bool showMalayalam = false;
 

@@ -421,6 +421,7 @@ class _AddMatrimonyFABState extends State<AddMatrimonyFAB> {
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
   // Controllers
+  final TextEditingController profileNoController = TextEditingController();
   final TextEditingController nameController = TextEditingController();
   final TextEditingController ageController = TextEditingController();
   final TextEditingController genderController = TextEditingController();
@@ -458,6 +459,7 @@ class _AddMatrimonyFABState extends State<AddMatrimonyFAB> {
     super.initState();
     if (widget.existingData != null) {
       final data = widget.existingData!;
+      profileNoController.text = data["profileNo"] ?? "";
       nameController.text = data["name"] ?? "";
       ageController.text = data["age"] ?? "";
 
@@ -625,6 +627,7 @@ class _AddMatrimonyFABState extends State<AddMatrimonyFAB> {
 
       final data = {
         "userId": widget.userId,
+        "profileNo": profileNoController.text.trim(),
         "name": nameController.text.trim(),
         "age": ageController.text.trim(),
         "gender": genderController.text.trim(),
@@ -720,12 +723,17 @@ class _AddMatrimonyFABState extends State<AddMatrimonyFAB> {
         ),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(12.0),
+        padding: const EdgeInsets.all(15.0),
         child: Form(
           key: _formKey,
           child: SingleChildScrollView(
             child: Column(
               children: [
+                _buildTextField(
+                  profileNoController,
+                  "Profile No",
+                  required: true,
+                ),
                 _buildTextField(nameController, "Full Name", required: true),
                 _buildTextField(
                   ageController,

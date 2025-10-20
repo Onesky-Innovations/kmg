@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:kmg/screens/ads/BannerDetailScreen.dart';
 import 'package:kmg/screens/ads/ad_detail_screen.dart';
-import 'package:kmg/widgets/auto_scroll_ad.dart'; // Ensure the path is correct
+import 'package:kmg/widgets/auto_scroll_ad.dart';
 
 class FeaturedScreen extends StatelessWidget {
   const FeaturedScreen({super.key});
@@ -11,48 +11,34 @@ class FeaturedScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final firestore = FirebaseFirestore.instance;
 
-    final featuredClassifieds = firestore
-        .collection('classifieds')
-        .where('isFeatured', isEqualTo: true)
-        .snapshots();
-
-    // ✅ FIX: Query is now set to the top-level 'banners' collection
+    // 1️⃣ Banners Stream (top-level)
     final bannersStream = firestore
-        .collection('banners') // <--- CORRECTED COLLECTION PATH
-        .orderBy("createdAt", descending: true)
+        .collection('banners')
+        .orderBy('createdAt', descending: true)
         .snapshots();
 
-    // This is not used in the final build for the banner, but kept for context
-    final bannerHeight = MediaQuery.of(context).size.width * 200 / 1080;
+    // 2️⃣ Featured Classifieds Stream (collectionGroup)
+    final featuredClassifiedsStream = firestore
+        .collectionGroup('classifieds')
+        .where('isFeatured', isEqualTo: true)
+        .orderBy('createdAt', descending: true)
+        .snapshots();
 
     return Scaffold(
-      // appBar: AppBar(
-      //   title: const Text("Featured"),
-      //   automaticallyImplyLeading: false,
-      //   backgroundColor: Colors.transparent,
-      //   // Set elevation to 0 to remove the shadow line
-      //   elevation: 0.0,
-      // ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(height: 25),
-            const Text(
-              "📌 Banners",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 25),
 
-            // Use the correct bannersStream here
+            // Banner Section
             StreamBuilder<QuerySnapshot>(
               stream: bannersStream,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  // Using the calculated height for the loading indicator
                   return SizedBox(
-                    height: bannerHeight,
+                    height: 150,
                     child: const Center(child: CircularProgressIndicator()),
                   );
                 }
@@ -66,16 +52,14 @@ class FeaturedScreen extends StatelessWidget {
 
                 final bannerDocs = snapshot.data!.docs;
 
-                // Pass the fetched documents to AutoScrollAd
                 return AutoScrollAd(
                   height: 150,
-                  ads: bannerDocs, // ✅ PASSING THE CORRECT LIST
+                  ads: bannerDocs,
                   onTap: (index) {
                     final data =
                         bannerDocs[index].data() as Map<String, dynamic>;
                     final images = data['images'] as List<dynamic>? ?? [];
                     final imageUrl = images.isNotEmpty ? images[0] : '';
-
                     final description = data['description'] ?? '';
                     final phone = data['phone'] ?? '';
 
@@ -96,17 +80,16 @@ class FeaturedScreen extends StatelessWidget {
               },
             ),
 
-            const SizedBox(height: 20),
-
+            const SizedBox(height: 30),
             const Text(
               "🔥 Featured Classifieds",
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
 
-            // ... (The rest of your featured classifieds code remains here)
+            // Featured Classifieds Section
             StreamBuilder<QuerySnapshot>(
-              stream: featuredClassifieds,
+              stream: featuredClassifiedsStream,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -130,7 +113,8 @@ class FeaturedScreen extends StatelessWidget {
                     final title = data['title'] ?? 'Untitled';
                     final images = data['images'] as List<dynamic>? ?? [];
                     final imageUrl = images.isNotEmpty ? images[0] : '';
-                    final price = data['price'] ?? '';
+                    final price = data['price'] ?? 'N/A';
+                    final place = data['place'] ?? '';
 
                     return GestureDetector(
                       onTap: () {
@@ -142,35 +126,40 @@ class FeaturedScreen extends StatelessWidget {
                               isAdmin: false,
                               adId: doc.id,
                               adData: data,
-                              userId: '',
+                              userId: data['userId'] ?? '',
                             ),
                           ),
                         );
                       },
                       child: Card(
+                        margin: const EdgeInsets.only(bottom: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
-                        margin: const EdgeInsets.only(bottom: 16),
+                        elevation: 3,
+                        shadowColor: Colors.black.withOpacity(0.1),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            ClipRRect(
-                              borderRadius: const BorderRadius.vertical(
-                                top: Radius.circular(16),
-                              ),
-                              child: Image.network(
-                                imageUrl,
-                                height: 150,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
-                                  height: 150,
-                                  color: Colors.grey[300],
-                                  child: const Icon(Icons.image_not_supported),
+                            if (imageUrl.isNotEmpty)
+                              ClipRRect(
+                                borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(16),
+                                ),
+                                child: Image.network(
+                                  imageUrl,
+                                  height: 180,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    height: 180,
+                                    color: Colors.grey[300],
+                                    child: const Icon(
+                                      Icons.image_not_supported,
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
                             Padding(
                               padding: const EdgeInsets.all(12.0),
                               child: Column(
@@ -185,6 +174,7 @@ class FeaturedScreen extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 4),
                                   Text("Price: $price"),
+                                  Text("Place: $place"),
                                 ],
                               ),
                             ),

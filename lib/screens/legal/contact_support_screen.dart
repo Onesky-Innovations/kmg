@@ -2,14 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ContactSupportScreen extends StatelessWidget {
-  const ContactSupportScreen(String adId, {super.key});
+  const ContactSupportScreen({super.key});
 
-  // Contact Information (UNCHANGED as requested)
   final String whatsappNumber = "+919744422238";
   final String email = "kmg.project1@gmail.com";
   final String customerCareNumber = "+919744422238";
-
-  // --- Utility Functions ---
 
   // Centralized URL launcher with error handling
   Future<void> _launchUrl(
@@ -18,20 +15,17 @@ class ContactSupportScreen extends StatelessWidget {
     bool external = true,
   }) async {
     final uri = Uri.parse(url);
+    final mode = external
+        ? LaunchMode.externalApplication
+        : LaunchMode.platformDefault;
+
     try {
       if (await canLaunchUrl(uri)) {
-        await launchUrl(
-          uri,
-          mode: external
-              ? LaunchMode.externalApplication
-              : LaunchMode.platformDefault,
-        );
+        await launchUrl(uri, mode: mode);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Unable to launch. Protocol not supported on this device for: $url',
-            ),
+            content: Text('Unable to launch: ${uri.scheme}'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -39,16 +33,14 @@ class ContactSupportScreen extends StatelessWidget {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'An error occurred while launching. Please try again. ($e)',
-          ),
+          content: Text('Error launching URL: $e'),
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
     }
   }
 
-  // Confirmation dialog (More professional wording)
+  // Confirmation dialog
   Future<bool> _showConfirmationDialog(
     BuildContext context,
     String title,
@@ -67,8 +59,8 @@ class ContactSupportScreen extends StatelessWidget {
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).primaryColor,
-              foregroundColor: Colors.white,
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
             ),
             child: const Text("Proceed"),
           ),
@@ -78,10 +70,10 @@ class ContactSupportScreen extends StatelessWidget {
     return result ?? false;
   }
 
-  // Problem input dialog (Kept structure, improved UI)
+  // Dialog before call
   Future<String?> _showProblemInputDialog(BuildContext context) async {
     TextEditingController controller = TextEditingController();
-    final result = await showDialog<String>(
+    return showDialog<String>(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text("Customer Hotline Support"),
@@ -123,19 +115,20 @@ class ContactSupportScreen extends StatelessWidget {
         ],
       ),
     );
-    return result;
   }
 
-  // --- Contact Handlers ---
-
-  // Open WhatsApp
+  // ✅ Open WhatsApp with wa.me link (this works on all platforms)
   Future<void> _openWhatsApp(BuildContext context) async {
-    final url = "https://wa.me/$whatsappNumber";
+    final phone = whatsappNumber.replaceAll('+', '');
+    final message = Uri.encodeComponent("Hi, I need support.");
+    final url = "https://wa.me/$phone?text=$message";
+
     final confirmed = await _showConfirmationDialog(
       context,
       "WhatsApp Support Chat",
       "You are about to launch WhatsApp to chat directly with a support agent. Proceed?",
     );
+
     if (confirmed) {
       await _launchUrl(context, url);
     }
@@ -143,40 +136,38 @@ class ContactSupportScreen extends StatelessWidget {
 
   // Open Email
   Future<void> _openEmail(BuildContext context) async {
-    // Added subject and body pre-fill for professionalism
+    const subject = "Support Request via App";
+    const body =
+        "Dear Support Team,\n\nPlease detail your issue here\n\nThank you.";
     final url =
-        "mailto:$email?subject=URGENT%20Support%20Request%20via%20App&body=Dear%20Support%20Team,%0A%0A%5BPlease%20detail%20your%20issue%20here%5D%0A%0A%20Thank%20you.%0A";
+        'mailto:$email?subject=${Uri.encodeComponent(subject)}&body=${Uri.encodeComponent(body)}';
+
     final confirmed = await _showConfirmationDialog(
       context,
       "Email Customer Service",
       "This will open your default email application to compose a message to $email. Proceed?",
     );
+
     if (confirmed) {
       await _launchUrl(context, url);
     }
   }
 
-  // Call Customer Care
+  // Call Hotline
   Future<void> _callCustomerCare(BuildContext context) async {
     String? problem = await _showProblemInputDialog(context);
-    // Original logic maintained: Call only proceeds if description is provided
     if (problem != null && problem.isNotEmpty) {
       final url = "tel:$customerCareNumber";
       await _launchUrl(context, url, external: true);
     } else if (problem != null) {
-      // Show informative message if user pressed 'Call' but left it empty
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'Description is required before calling the hotline for better service.',
-          ),
+          content: Text('Description is required before calling.'),
           backgroundColor: Colors.orange,
         ),
       );
     }
   }
-
-  // --- UI Components ---
 
   Widget _buildContactCard({
     required BuildContext context,
@@ -247,7 +238,6 @@ class ContactSupportScreen extends StatelessWidget {
             ),
             const Divider(height: 40),
 
-            // WhatsApp Support
             _buildContactCard(
               context: context,
               title: "Instant Chat Support",
@@ -257,7 +247,6 @@ class ContactSupportScreen extends StatelessWidget {
               onTap: () => _openWhatsApp(context),
             ),
 
-            // Email Support
             _buildContactCard(
               context: context,
               title: "Formal Email Inquiry",
@@ -267,11 +256,10 @@ class ContactSupportScreen extends StatelessWidget {
               onTap: () => _openEmail(context),
             ),
 
-            // Customer Hotline
             _buildContactCard(
               context: context,
               title: "Customer Service Hotline",
-              subtitle: "For urgent matters, call us ",
+              subtitle: "For urgent matters, call us",
               icon: Icons.phone_in_talk_outlined,
               color: Colors.red.shade600,
               onTap: () => _callCustomerCare(context),

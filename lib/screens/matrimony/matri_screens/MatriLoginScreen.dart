@@ -234,9 +234,7 @@ class _MatriLoginScreenState extends State<MatriLoginScreen> {
   void _navigateToContactSupport() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const ContactSupportScreen('general'),
-      ),
+      MaterialPageRoute(builder: (context) => const ContactSupportScreen()),
     );
   }
 

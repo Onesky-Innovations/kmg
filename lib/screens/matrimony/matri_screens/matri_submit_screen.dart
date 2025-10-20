@@ -19,7 +19,7 @@ class _MatriSubmitScreenState extends State<MatriSubmitScreen> {
   String? _selectedProfileFor;
 
   // Admin WhatsApp number
-  final String adminPhone = "917907708822";
+  final String adminPhone = "919744422238";
 
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
@@ -47,6 +47,9 @@ class _MatriSubmitScreenState extends State<MatriSubmitScreen> {
     try {
       if (await canLaunchUrl(whatsappUri)) {
         await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("WhatsApp is not available.")),

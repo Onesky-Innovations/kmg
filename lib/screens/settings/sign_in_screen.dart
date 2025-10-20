@@ -449,7 +449,7 @@ class _SignInScreenState extends State<SignInScreen> {
         'password_label': 'Password',
         'sign_in': 'SIGN IN',
         'forgot_password': 'Forgot Password?',
-        'help': 'Help?',
+        'help': '',
         'create_account': 'CREATE NEW ACCOUNT',
         'reset_title': 'Password Reset Assistance',
         'reset_message_1':
@@ -478,7 +478,7 @@ class _SignInScreenState extends State<SignInScreen> {
         'password_label': 'പാസ്‌വേർഡ്',
         'sign_in': 'സൈൻ ഇൻ ചെയ്യുക',
         'forgot_password': 'പാസ്‌വേർഡ് മറന്നുപോയോ?',
-        'help': 'സഹായം?',
+        'help': '',
         'create_account': 'പുതിയ അക്കൗണ്ട് സൃഷ്ടിക്കുക',
         'reset_title': 'പാസ്‌വേർഡ് റീസെറ്റ് സഹായം',
         'reset_message_1':
@@ -668,8 +668,7 @@ class _SignInScreenState extends State<SignInScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) =>
-                            const ContactSupportScreen('password_reset'),
+                        builder: (_) => const ContactSupportScreen(),
                       ),
                     );
                   },
