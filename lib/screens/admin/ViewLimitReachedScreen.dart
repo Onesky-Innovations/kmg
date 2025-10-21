@@ -16,6 +16,9 @@ class _ViewLimitReachedScreenState extends State<ViewLimitReachedScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final TextEditingController _searchController = TextEditingController();
   String _searchText = "";
+  ThemeData get theme => Theme.of(context);
+  Color get primaryColor => theme.primaryColor;
+  Color get onPrimaryColor => theme.appBarTheme.foregroundColor ?? Colors.white;
 
   bool _isFemaleLimitEnabled = false;
 
@@ -293,8 +296,11 @@ class _ViewLimitReachedScreenState extends State<ViewLimitReachedScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text("View Limit Management"),
-          bottom: const TabBar(
-            tabs: [
+          bottom: TabBar(
+            labelColor: onPrimaryColor,
+            unselectedLabelColor: onPrimaryColor.withOpacity(0.7),
+            indicatorColor: onPrimaryColor,
+            tabs: const [
               Tab(text: "Profiles & User Limits", icon: Icon(Icons.list)),
               Tab(text: "Global Settings", icon: Icon(Icons.settings)),
             ],

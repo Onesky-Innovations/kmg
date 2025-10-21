@@ -93,7 +93,7 @@ flutter_launcher_icons:
   web:
     generate: true
     image_path: "assets/icon/kmglogo.png"  # <-- Use your actual icon path
-    background_color: "#ffffff"             # <-- Use a real color (e.g., White)
+    # background_color: "#ffffff"             # <-- Use a real color (e.g., White)
     theme_color: "#000000"
   windows:
     generate: false 

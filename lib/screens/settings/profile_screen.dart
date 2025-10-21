@@ -857,8 +857,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           // Dark/Light Mode Toggle Button
           IconButton(
             icon: Icon(
-              color: Colors.black,
               themeProvider.isDarkMode ? Icons.dark_mode_outlined : Icons.sunny,
+              color: Theme.of(context).colorScheme.primary, // ✅ dynamic color
             ),
             onPressed: () {
               themeProvider.toggleTheme(!themeProvider.isDarkMode);

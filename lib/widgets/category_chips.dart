@@ -20,11 +20,11 @@ class _CategoryChipsState extends State<CategoryChips> {
     {'name': 'Vehicles', 'icon': Icons.directions_car},
     {'name': 'Real Estate', 'icon': Icons.home},
     {'name': 'Jobs', 'icon': Icons.work},
-    {'name': 'Home & Garden', 'icon': Icons.home_outlined},
+    {'name': 'Farm', 'icon': Icons.agriculture},
     {'name': 'Services', 'icon': Icons.build},
     {'name': 'Fashion', 'icon': Icons.checkroom},
     {'name': 'Sports', 'icon': Icons.sports_soccer},
-    {'name': 'Books', 'icon': Icons.book},
+    {'name': 'Others', 'icon': Icons.book},
   ];
 
   @override

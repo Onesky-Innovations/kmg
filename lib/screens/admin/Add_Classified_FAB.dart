@@ -53,11 +53,11 @@ class _AddClassifiedFABState extends State<AddClassifiedFAB> {
     "Vehicles",
     "Real Estate",
     "Jobs",
-    "Home & Garden",
+    "Farm",
     "Services",
     "Fashion",
     "Sports",
-    "Books",
+    "Others",
   ];
 
   @override

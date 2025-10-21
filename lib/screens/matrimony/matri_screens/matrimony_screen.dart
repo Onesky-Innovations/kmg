@@ -616,7 +616,7 @@ class _MatrimonyScreenState extends State<MatrimonyScreen> {
               context,
               MaterialPageRoute(
                 builder: (context) =>
-                    MatriProfileScreen(userData: loggedInUser!),
+                    MatriProfileScreen(userData: loggedInUser),
               ),
             );
           }

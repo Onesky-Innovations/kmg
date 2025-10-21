@@ -239,6 +239,97 @@
 //   }
 // }
 
+// import 'package:flutter/material.dart';
+// import 'package:firebase_core/firebase_core.dart';
+// import 'package:kmg/notifiers/matrimony_notifier.dart';
+// import 'package:kmg/notifiers/saved_ads_notifier.dart';
+// import 'package:kmg/providers/theme_provider.dart';
+// import 'package:kmg/splash_zoom_screen.dart';
+// import 'package:provider/provider.dart';
+// import 'package:shared_preferences/shared_preferences.dart';
+// import 'firebase_options.dart';
+// import 'app_routes.dart';
+
+// void main() async {
+//   WidgetsFlutterBinding.ensureInitialized();
+//   // We keep SharedPreferences initialized here as it's quick and generally needed early
+//   await SharedPreferences.getInstance();
+//   runApp(const FirebaseAppWrapper());
+// }
+
+// class FirebaseAppWrapper extends StatelessWidget {
+//   const FirebaseAppWrapper({super.key});
+
+//   Future<FirebaseApp> _initFirebase() async {
+//     return await Firebase.initializeApp(
+//       options: DefaultFirebaseOptions.currentPlatform,
+//     );
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return FutureBuilder<FirebaseApp>(
+//       future: _initFirebase(),
+//       builder: (context, snapshot) {
+//         if (snapshot.connectionState == ConnectionState.done) {
+//           // Firebase is initialized, now we provide the state managers
+//           return const MyAppWrapper();
+//         }
+//         // Show a loading indicator while Firebase initializes
+//         return const MaterialApp(
+//           home: Scaffold(body: Center(child: CircularProgressIndicator())),
+//         );
+//       },
+//     );
+//   }
+// }
+
+// class MyAppWrapper extends StatelessWidget {
+//   const MyAppWrapper({super.key});
+
+//   @override
+//   Widget build(BuildContext context) {
+//     // ⭐️ FIX: MatrimonyNotifier must be added here.
+//     return MultiProvider(
+//       providers: [
+//         // 1. Theme Provider
+//         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+
+//         // 2. Saved Ads Provider
+//         ChangeNotifierProvider(create: (_) => SavedAdsNotifier()),
+
+//         // ⭐️ 3. Matrimony Notifier (The Missing Provider)
+//         ChangeNotifierProvider(create: (_) => MatrimonyNotifier()),
+//       ],
+//       child: const MyApp(),
+//     );
+//   }
+// }
+
+// class MyApp extends StatelessWidget {
+//   const MyApp({super.key});
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final themeProvider = Provider.of<ThemeProvider>(context);
+
+//     // Assuming lightTheme and darkTheme are defined somewhere accessible
+//     // For this example, I'll use simple defaults if they are missing.
+//     final lightTheme = ThemeData.light(); // Placeholder
+//     final darkTheme = ThemeData.dark(); // Placeholder
+
+//     return MaterialApp(
+//       debugShowCheckedModeBanner: false,
+//       title: "KMG",
+//       theme: lightTheme,
+//       darkTheme: darkTheme,
+//       themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+//       home: const SplashZoomScreen(),
+//       routes: AppRoutes.routes,
+//     );
+//   }
+// }
+
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:kmg/notifiers/matrimony_notifier.dart';
@@ -252,7 +343,6 @@ import 'app_routes.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // We keep SharedPreferences initialized here as it's quick and generally needed early
   await SharedPreferences.getInstance();
   runApp(const FirebaseAppWrapper());
 }
@@ -272,11 +362,10 @@ class FirebaseAppWrapper extends StatelessWidget {
       future: _initFirebase(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.done) {
-          // Firebase is initialized, now we provide the state managers
           return const MyAppWrapper();
         }
-        // Show a loading indicator while Firebase initializes
         return const MaterialApp(
+          debugShowCheckedModeBanner: false,
           home: Scaffold(body: Center(child: CircularProgressIndicator())),
         );
       },
@@ -289,16 +378,10 @@ class MyAppWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ⭐️ FIX: MatrimonyNotifier must be added here.
     return MultiProvider(
       providers: [
-        // 1. Theme Provider
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
-
-        // 2. Saved Ads Provider
         ChangeNotifierProvider(create: (_) => SavedAdsNotifier()),
-
-        // ⭐️ 3. Matrimony Notifier (The Missing Provider)
         ChangeNotifierProvider(create: (_) => MatrimonyNotifier()),
       ],
       child: const MyApp(),
@@ -313,16 +396,11 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
-    // Assuming lightTheme and darkTheme are defined somewhere accessible
-    // For this example, I'll use simple defaults if they are missing.
-    final lightTheme = ThemeData.light(); // Placeholder
-    final darkTheme = ThemeData.dark(); // Placeholder
-
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: "KMG",
-      theme: lightTheme,
-      darkTheme: darkTheme,
+      theme: lightTheme, // ✅ using from theme_provider.dart
+      darkTheme: darkTheme, // ✅ using from theme_provider.dart
       themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
       home: const SplashZoomScreen(),
       routes: AppRoutes.routes,
